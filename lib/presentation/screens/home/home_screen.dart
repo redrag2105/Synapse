@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
+import 'package:synapse/presentation/controllers/trending_topic_controller.dart';
 import 'package:synapse/presentation/screens/home/widgets/header_delegate.dart';
 import 'package:synapse/presentation/screens/home/widgets/square_feature_card.dart';
 import 'package:synapse/presentation/screens/home/widgets/topic_chip.dart';
@@ -15,6 +17,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final topPadding = MediaQuery.paddingOf(context).top;
+    final currentYear = DateTime.now().year;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceGray,
@@ -93,7 +96,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Trending Research Topics',
+                    'Trending Research Topics (${currentYear - 2}–$currentYear)',
                     style: AppTextStyles.h3.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 14,
@@ -102,17 +105,44 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Wrap(
-                    spacing: 10,
-                    runSpacing: 12,
-                    children: [
-                      TopicChip(label: 'Artificial Intelligence'),
-                      TopicChip(label: 'Software Engineering'),
-                      TopicChip(label: 'Data Science'),
-                      TopicChip(label: 'Cybersecurity'),
-                      TopicChip(label: 'Internet of Things'),
-                      TopicChip(label: 'Blockchain'),
-                    ],
+
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final trendingState = ref.watch(
+                        trendingTopicControllerProvider,
+                      );
+
+                      return trendingState.when(
+                        loading: () => Wrap(
+                          spacing: 10,
+                          runSpacing: 12,
+                          children: const [
+                            TopicChipSkeleton(width: 120),
+                            TopicChipSkeleton(width: 160),
+                            TopicChipSkeleton(width: 100),
+                            TopicChipSkeleton(width: 140),
+                            TopicChipSkeleton(width: 180),
+                            TopicChipSkeleton(width: 130),
+                          ],
+                        ),
+
+                        error: (err, stack) => Text(
+                          'Unable to load trends. Please check your connection.',
+                          style: AppTextStyles.metadata,
+                        ),
+
+                        data: (topics) {
+                          if (topics.isEmpty) return const SizedBox();
+                          return Wrap(
+                            spacing: 10,
+                            runSpacing: 12,
+                            children: topics.map((topic) {
+                              return TopicChip(topic: topic);
+                            }).toList(),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),

@@ -4,6 +4,7 @@ import 'package:synapse/app/utils/error_handler.dart';
 import 'package:synapse/data/models/publication_model.dart';
 import 'package:synapse/data/providers/apis/api_publication.dart';
 import 'package:synapse/domain/entities/publication_entity.dart';
+import 'package:synapse/domain/entities/topic_entity.dart';
 import 'package:synapse/domain/repositories/publication_repository.dart';
 
 class PublicationRepositoryImpl implements PublicationRepository {
@@ -78,6 +79,34 @@ class PublicationRepositoryImpl implements PublicationRepository {
 
       final publication = PublicationModel.fromJson(response);
       return Right(publication);
+    } catch (e) {
+      return Left(ErrorHandler.handle(e));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<TopicEntity>>> getTrendingTopics() async {
+    try {
+      final currentYear = DateTime.now().year;
+      final filterYear = '${currentYear - 2}-$currentYear';
+
+      final response = await _apiPublication.getWorks(
+        filter: 'publication_year:$filterYear',
+        groupBy: 'topics.id',
+      );
+
+      final groups = response['group_by'] as List;
+
+      final topics = groups.take(6).map((e) {
+        return TopicEntity(
+          id: e['key'].toString(),
+          displayName: e['key_display_name'].toString(),
+          description: null,
+          worksCount: e['count'] as int,
+        );
+      }).toList();
+
+      return Right(topics);
     } catch (e) {
       return Left(ErrorHandler.handle(e));
     }

@@ -28,34 +28,23 @@ class SearchPublicationsUseCase
   Future<Either<Failure, List<PublicationEntity>>> call(
     SearchPublicationsParams params,
   ) async {
-    // Bước 1: Tìm Topic ID dựa trên từ khóa (chỉ cần lấy 1 kết quả chính xác nhất)
     final topicResult = await _topicRepository.searchTopics(
       params.keyword,
       limit: 1,
     );
 
-    return topicResult.fold(
-      (failure) async =>
-          Left(failure), // Nếu lỗi (mất mạng, 429...), trả về lỗi luôn
-      (topics) async {
-        if (topics.isEmpty) {
-          return const Left(
-            NotFoundFailure(
-              'Không tìm thấy chủ đề nghiên cứu nào khớp với từ khóa của bạn.',
-            ),
-          );
-        }
+    return topicResult.fold((failure) async => Left(failure), (topics) async {
+      if (topics.isEmpty) {
+        return const Right([]);
+      }
 
-        // Trích xuất mã ID (VD: "https://openalex.org/T12419" -> "T12419")
-        final topicId = topics.first.id.split('/').last;
+      final topicId = topics.first.id.split('/').last;
 
-        // Bước 2: Dùng Topic ID để lấy danh sách bài báo
-        return await _publicationRepository.getPublicationsByTopicId(
-          topicId,
-          page: params.page,
-          limit: params.limit,
-        );
-      },
-    );
+      return await _publicationRepository.getPublicationsByTopicId(
+        topicId,
+        page: params.page,
+        limit: params.limit,
+      );
+    });
   }
 }

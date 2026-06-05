@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
-import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/presentation/controllers/search_controller.dart';
-
-import 'widgets/publication_card.dart';
-import 'widgets/publication_card_skeleton.dart';
-import 'widgets/search_autocomplete_bar.dart';
+import 'package:synapse/presentation/screens/search/widgets/publication_card.dart';
+import 'package:synapse/presentation/screens/search/widgets/publication_card_skeleton.dart';
+import 'package:synapse/presentation/screens/search/widgets/search_empty_state.dart';
+import 'package:synapse/presentation/screens/search/widgets/search_header.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -26,56 +26,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppColors.brandBlue900, AppColors.brandBlue700],
-              ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ClipRect(
-                    child: AnimatedSize(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      child: SizedBox(
-                        height: _isFocused ? 0 : 56,
-                        width: double.infinity,
-                        child: Center(
-                          child: Text(
-                            'SYNAPSE',
-                            style: AppTextStyles.h2.copyWith(
-                              color: Colors.white,
-                              fontSize: 20,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                    child: SearchAutocompleteBar(
-                      onFocusChanged: (hasFocus) {
-                        setState(() {
-                          _isFocused = hasFocus;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          SearchHeader(
+            isFocused: _isFocused,
+            onFocusChanged: (hasFocus) {
+              setState(() => _isFocused = hasFocus);
+            },
           ),
 
           // BODY CONTENT
@@ -100,37 +55,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         child: Text('Lỗi: ${error.toString()}'),
                       ),
                       data: (publications) {
+                        final lastQuery = ref
+                            .read(searchControllerProvider.notifier)
+                            .lastQuery;
+
                         if (publications.isEmpty) {
-                          return Center(
-                            key: const ValueKey('empty_state'),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.search_off_rounded,
-                                  size: 64,
-                                  color: AppColors.textLight.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Không tìm thấy dữ liệu',
-                                  style: AppTextStyles.h3.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Thử tìm kiếm với một từ khóa khác',
-                                  style: AppTextStyles.bodyText.copyWith(
-                                    color: AppColors.textLight,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
+                          if (lastQuery.isEmpty) {
+                            return const SearchEmptyState(
+                              key: ValueKey('initial_state'),
+                              isInitialState: true,
+                              icon: CupertinoIcons.book,
+                              title: 'Discover the Unknown',
+                              subtitle:
+                                  'Search across millions of scholarly works, authors, and topics to start your research.',
+                            );
+                          } else {
+                            return SearchEmptyState(
+                              key: const ValueKey('empty_state'),
+                              isInitialState: false,
+                              icon: CupertinoIcons.search,
+                              title: 'No results found',
+                              subtitle:
+                                  'We couldn\'t find anything matching "$lastQuery".\nTry checking your spelling or use broader terms.',
+                            );
+                          }
                         }
+
                         return ListView.builder(
                           key: const ValueKey('real_data_list'),
                           padding: const EdgeInsets.only(top: 16),

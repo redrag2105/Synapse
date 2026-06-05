@@ -20,6 +20,7 @@ import 'package:synapse/domain/usecases/author/get_top_authors_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_by_id_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_trend_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
+import 'package:synapse/domain/usecases/publication/get_trending_topics_usecase.dart';
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
 import 'package:synapse/domain/usecases/topic/get_topic_hints_usecase.dart';
 
@@ -107,4 +108,10 @@ final getPublicationByIdUseCaseProvider = Provider<GetPublicationByIdUseCase>((
   ref,
 ) {
   return GetPublicationByIdUseCase(ref.watch(publicationRepositoryProvider));
+});
+
+final getTrendingTopicsUseCaseProvider = Provider<GetTrendingTopicsUseCase>((
+  ref,
+) {
+  return GetTrendingTopicsUseCase(ref.watch(publicationRepositoryProvider));
 });
