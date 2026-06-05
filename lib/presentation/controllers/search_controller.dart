@@ -19,6 +19,8 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
   KeepAliveLink? _link;
   Timer? _timer;
 
+  int _currentRequestId = 0;
+
   @override
   FutureOr<List<PublicationEntity>> build() {
     _keepAliveTemporarily();
@@ -36,9 +38,7 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
   void _keepAliveTemporarily() {
     _timer?.cancel();
-
     _link ??= ref.keepAlive();
-
     _timer = Timer(const Duration(minutes: 5), () {
       _link?.close();
       _link = null;
@@ -51,9 +51,10 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
     _keepAliveTemporarily();
 
+    final requestId = ++_currentRequestId;
+
     if (_cache.containsKey(normalizedKeyword)) {
       AppLogger.i('⚡ Lấy kết quả từ Cache cho từ khóa: "$keyword" (0ms)');
-
       state = AsyncValue.data(_cache[normalizedKeyword]!);
       return;
     }
@@ -70,6 +71,8 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
     result.fold(
       (failure) {
+        if (requestId != _currentRequestId) return;
+
         stopwatch.stop();
         AppLogger.w(
           '⚠️ Tìm kiếm thất bại sau ${stopwatch.elapsedMilliseconds}ms: ${failure.message}',
@@ -84,6 +87,13 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
         _cache[normalizedKeyword] = publications;
 
+        if (requestId != _currentRequestId) {
+          AppLogger.d(
+            '🚫 Đã hủy update giao diện cho "$keyword" do có truy vấn mới hơn.',
+          );
+          return;
+        }
+
         state = AsyncValue.data(publications);
       },
     );
@@ -93,6 +103,8 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
     final topicId = topic.id.split('/').last;
 
     _keepAliveTemporarily();
+
+    final requestId = ++_currentRequestId;
 
     if (_cache.containsKey(topicId)) {
       AppLogger.i('⚡ Lấy từ Cache cho Topic ID: $topicId (0ms)');
@@ -110,6 +122,8 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
     result.fold(
       (failure) {
+        if (requestId != _currentRequestId) return;
+
         state = AsyncValue.error(failure, StackTrace.current);
       },
       (publications) {
@@ -117,7 +131,16 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
         AppLogger.i(
           '🎉 Tìm thành công ${publications.length} bài báo trong ${stopwatch.elapsedMilliseconds}ms',
         );
+
         _cache[topicId] = publications;
+
+        if (requestId != _currentRequestId) {
+          AppLogger.d(
+            '🚫 Đã hủy update giao diện cho Topic "$topicId" do có truy vấn mới hơn.',
+          );
+          return;
+        }
+
         state = AsyncValue.data(publications);
       },
     );

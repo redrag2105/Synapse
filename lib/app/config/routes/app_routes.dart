@@ -28,9 +28,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SearchScreen(),
       ),
       GoRoute(
-        path: AppRoutes.publicationDetail,
+        path: '${AppRoutes.publicationDetail}/:id',
         builder: (context, state) {
-          final id = state.extra as String;
+          final id = state.pathParameters['id'] ?? '';
           return PublicationDetailScreen(publicationId: id);
         },
       ),
