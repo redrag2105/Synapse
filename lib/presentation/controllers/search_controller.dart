@@ -21,6 +21,8 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
   int _currentRequestId = 0;
 
+  String lastQuery = '';
+
   @override
   FutureOr<List<PublicationEntity>> build() {
     _keepAliveTemporarily();
@@ -47,8 +49,14 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
   Future<void> search(String keyword) async {
     final normalizedKeyword = keyword.trim().toLowerCase();
-    if (normalizedKeyword.isEmpty) return;
 
+    if (normalizedKeyword.isEmpty) {
+      lastQuery = '';
+      state = const AsyncValue.data([]);
+      return;
+    }
+
+    lastQuery = keyword;
     _keepAliveTemporarily();
 
     final requestId = ++_currentRequestId;
@@ -101,6 +109,8 @@ class SearchController extends AsyncNotifier<List<PublicationEntity>> {
 
   Future<void> searchByTopicId(TopicEntity topic) async {
     final topicId = topic.id.split('/').last;
+
+    lastQuery = topic.displayName;
 
     _keepAliveTemporarily();
 

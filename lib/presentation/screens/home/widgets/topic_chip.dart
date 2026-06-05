@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
+import 'package:synapse/domain/entities/topic_entity.dart';
+import 'package:synapse/presentation/controllers/search_controller.dart';
 
-class TopicChip extends StatelessWidget {
-  final String label;
+class TopicChip extends ConsumerWidget {
+  final TopicEntity topic;
 
-  const TopicChip({super.key, required this.label});
+  const TopicChip({super.key, required this.topic});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
       onTap: () {
+        ref.read(searchControllerProvider.notifier).searchByTopicId(topic);
+
         context.push(AppRoutes.search);
       },
       borderRadius: BorderRadius.circular(20),
@@ -31,12 +37,34 @@ class TopicChip extends StatelessWidget {
           ],
         ),
         child: Text(
-          label,
+          topic.displayName,
           style: AppTextStyles.button.copyWith(
             color: AppColors.brandBlue900,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class TopicChipSkeleton extends StatelessWidget {
+  final double width;
+
+  const TopicChipSkeleton({super.key, required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.white,
+      child: Container(
+        width: width,
+        height: 38,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
         ),
       ),
     );

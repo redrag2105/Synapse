@@ -23,9 +23,12 @@ class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
 
   @override
   Widget build(BuildContext context) {
+    final initialQuery = ref.read(searchControllerProvider.notifier).lastQuery;
+
     return Autocomplete<TopicEntity>(
+      initialValue: TextEditingValue(text: initialQuery),
       optionsBuilder: (TextEditingValue textValue) async {
-        if (textValue.text.trim().isEmpty) {
+        if (textValue.text.trim().isEmpty || !_isFocused) {
           return const Iterable<TopicEntity>.empty();
         }
 
@@ -49,6 +52,15 @@ class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
           onFocusChange: (hasFocus) {
             setState(() => _isFocused = hasFocus);
             widget.onFocusChanged(hasFocus);
+
+            if (!hasFocus) {
+              final lastQuery = ref
+                  .read(searchControllerProvider.notifier)
+                  .lastQuery;
+              if (controller.text.trim().isEmpty && lastQuery.isNotEmpty) {
+                controller.text = lastQuery;
+              }
+            }
           },
           child: ValueListenableBuilder<TextEditingValue>(
             valueListenable: controller,
@@ -69,7 +81,9 @@ class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
                     CupertinoIcons.clear_circled_solid,
                     color: Colors.grey,
                   ),
-                  onPressed: () => controller.clear(),
+                  onPressed: () {
+                    controller.clear();
+                  },
                 );
               }
 
@@ -80,9 +94,11 @@ class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
                 style: AppTextStyles.bodyText,
                 onSubmitted: (searchText) {
                   focusNode.unfocus();
-                  ref
-                      .read(searchControllerProvider.notifier)
-                      .search(searchText);
+                  final query = searchText.trim();
+
+                  if (query.isNotEmpty) {
+                    ref.read(searchControllerProvider.notifier).search(query);
+                  }
                 },
                 decoration: InputDecoration(
                   hintText: 'Search for topics...',
