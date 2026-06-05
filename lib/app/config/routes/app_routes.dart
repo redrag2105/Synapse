@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:synapse/presentation/screens/home/home_screen.dart';
 import 'package:synapse/presentation/screens/publication_detail/publication_detail_screen.dart';
 import 'package:synapse/presentation/screens/search/search_screen.dart';
 
@@ -20,8 +21,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Home Screen'),
+        builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
         path: AppRoutes.search,

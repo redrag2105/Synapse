@@ -32,7 +32,7 @@ class PublicationCard extends StatelessWidget {
       child: InkWell(
         onTap: () {
           final id = publication.id.split('/').last;
-          context.push('/detail', extra: id);
+          context.push('/detail/$id');
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),

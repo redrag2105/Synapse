@@ -101,9 +101,34 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                       data: (publications) {
                         if (publications.isEmpty) {
-                          return const Center(
-                            key: ValueKey('empty_state'),
-                            child: Text('Không có dữ liệu.'),
+                          return Center(
+                            key: const ValueKey('empty_state'),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search_off_rounded,
+                                  size: 64,
+                                  color: AppColors.textLight.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Không tìm thấy dữ liệu',
+                                  style: AppTextStyles.h3.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Thử tìm kiếm với một từ khóa khác',
+                                  style: AppTextStyles.bodyText.copyWith(
+                                    color: AppColors.textLight,
+                                  ),
+                                ),
+                              ],
+                            ),
                           );
                         }
                         return ListView.builder(
