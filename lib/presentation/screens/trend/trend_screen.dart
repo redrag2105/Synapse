@@ -8,12 +8,12 @@ import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
 import 'package:synapse/presentation/screens/trend/widgets/metric_card.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_empty_state.dart';
-import 'package:synapse/presentation/screens/trend/widgets/trend_header_delegate.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_insight_card.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_line_chart.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_skeleton.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_small_stat_box.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_forecast_card.dart';
+import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
 
 class TrendScreen extends ConsumerStatefulWidget {
   final String? topicId;
@@ -27,25 +27,46 @@ class TrendScreen extends ConsumerStatefulWidget {
 
 class _TrendScreenState extends ConsumerState<TrendScreen>
     with SingleTickerProviderStateMixin {
-  String _currentTitle = 'Global Research Trend';
+  String _currentTitle = 'Global Research Publications';
   bool _isSearchBarFocused = false;
   late final AnimationController _focusAnimController;
 
   @override
   void initState() {
     super.initState();
-    _currentTitle = widget.topicName ?? 'Global Research Publications';
 
     _focusAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(publicationTrendControllerProvider.notifier)
-          .fetchTrend(topicId: widget.topicId);
-    });
+    final notifier = ref.read(publicationTrendControllerProvider.notifier);
+    final currentState = ref.read(publicationTrendControllerProvider);
+    final hasNewArgs = widget.topicId != null || widget.topicName != null;
+
+    if (hasNewArgs) {
+      _currentTitle = widget.topicName ?? 'Global Research Publications';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifier.fetchTrend(
+          topicId: widget.topicId,
+          topicName: widget.topicName,
+        );
+      });
+    } else {
+      final lastQuery = notifier.lastQuery;
+      final lastTopicName = notifier.lastTopicName;
+
+      if (lastTopicName != null || lastQuery.isNotEmpty) {
+        _currentTitle = lastTopicName ?? lastQuery;
+      } else {
+        _currentTitle = 'Global Research Publications';
+        if (currentState.value == null || currentState.value!.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            notifier.fetchTrend();
+          });
+        }
+      }
+    }
   }
 
   @override
@@ -55,22 +76,33 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
   }
 
   void _handleSearch(String keyword, {String? topicId, String? topicName}) {
+    final query = keyword.trim();
+
+    final isGlobal = query.isEmpty && topicId == null;
+
     setState(() {
-      _currentTitle = topicName ?? keyword;
+      if (isGlobal) {
+        _currentTitle = 'Global Research Publications';
+      } else {
+        _currentTitle = topicName ?? query;
+      }
       _isSearchBarFocused = false;
     });
+
     _focusAnimController.reverse();
+    FocusManager.instance.primaryFocus?.unfocus();
+
     ref
         .read(publicationTrendControllerProvider.notifier)
         .fetchTrend(
-          keyword: topicId == null ? keyword : null,
+          keyword: isGlobal ? null : (topicId == null ? query : null),
           topicId: topicId,
+          topicName: topicName,
         );
   }
 
   void _onFocusChanged(bool hasFocus) {
     _isSearchBarFocused = hasFocus;
-
     if (hasFocus) {
       _focusAnimController.forward();
     } else {
@@ -82,7 +114,9 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
   Widget build(BuildContext context) {
     final trendState = ref.watch(publicationTrendControllerProvider);
     final topPadding = MediaQuery.paddingOf(context).top;
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+
+    final isGlobal = _currentTitle == 'Global Research Publications';
+    final initialSearchQuery = isGlobal ? '' : _currentTitle;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceGray,
@@ -101,198 +135,231 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
                   builder: (context, child) {
                     return SliverPersistentHeader(
                       pinned: true,
-                      delegate: TrendHeaderDelegate(
+                      delegate: UniversalHeaderDelegate(
                         topPadding: topPadding,
-                        currentTitle: _currentTitle,
+                        title: 'Trend Analysis',
+                        subtitle: _currentTitle,
+                        searchBarInitialValue: initialSearchQuery,
+                        searchBarHintText: 'Search topic to analyze trend...',
                         focusProgress: _focusAnimController.value,
                         onFocusChanged: _onFocusChanged,
-                        onSearch: _handleSearch,
+                        onSubmitted: (keyword) => _handleSearch(keyword),
+                        onTopicSelected: (topic) => _handleSearch(
+                          topic.displayName,
+                          topicId: topic.id,
+                          topicName: topic.displayName,
+                        ),
                       ),
                     );
                   },
                 ),
 
                 SliverToBoxAdapter(
-                  child: trendState.when(
-                    loading: () => const TrendSkeleton(),
-                    error: (err, stack) => SizedBox(
-                      height: 400,
-                      child: Center(child: Text('Error: ${err.toString()}')),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 800),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    layoutBuilder:
+                        (Widget? currentChild, List<Widget> previousChildren) {
+                          return Stack(
+                            alignment: Alignment.topCenter,
+                            children: <Widget>[
+                              ...previousChildren,
+                              ?currentChild,
+                            ],
+                          );
+                        },
+                    child: trendState.when(
+                      loading: () =>
+                          const TrendSkeleton(key: ValueKey('trend_loading')),
+                      error: (err, stack) => SizedBox(
+                        key: const ValueKey('trend_error'),
+                        height: 400,
+                        child: Center(child: Text('Error: ${err.toString()}')),
+                      ),
+                      data: (trendData) {
+                        if (trendData.isEmpty) {
+                          return const TrendEmptyState(
+                            key: ValueKey('trend_empty'),
+                          );
+                        }
+
+                        final sortedYears = trendData.keys.toList()..sort();
+                        final currentYear = DateTime.now().year;
+                        final recentYears = sortedYears
+                            .where((y) => y >= currentYear - 20)
+                            .toList();
+
+                        if (recentYears.length < 2) {
+                          return const TrendEmptyState(
+                            key: ValueKey('trend_not_enough_data'),
+                          );
+                        }
+
+                        final minYear = recentYears.first.toDouble();
+                        final maxYear = recentYears.last.toDouble();
+                        double maxYValue = 0;
+                        int totalPublications = 0;
+                        int peakYear = recentYears.first;
+
+                        final spots = <FlSpot>[];
+                        for (final year in recentYears) {
+                          final count = trendData[year]!.toDouble();
+                          if (count > maxYValue) {
+                            maxYValue = count;
+                            peakYear = year;
+                          }
+                          totalPublications += count.toInt();
+                          spots.add(FlSpot(year.toDouble(), count));
+                        }
+
+                        final lastYear = recentYears.last;
+                        final prevYear = recentYears.length > 1
+                            ? recentYears[recentYears.length - 2]
+                            : lastYear;
+                        final lastYearCount = trendData[lastYear] ?? 0;
+                        final prevYearCount = trendData[prevYear] ?? 0;
+
+                        double growthRate = 0;
+                        if (prevYearCount > 0) {
+                          growthRate =
+                              ((lastYearCount - prevYearCount) /
+                                  prevYearCount) *
+                              100;
+                        }
+
+                        final avgPerYear =
+                            (totalPublications / recentYears.length).round();
+                        String trendStatus = "Stable ⚖️";
+                        Color trendColor = AppColors.textSecondary;
+                        if (growthRate > 5) {
+                          trendStatus = "Trending Up 🚀";
+                          trendColor = AppColors.success;
+                        } else if (growthRate < -5) {
+                          trendStatus = "Downtrend 📉";
+                          trendColor = AppColors.error;
+                        }
+
+                        final recent5Years = recentYears.length >= 5
+                            ? recentYears.sublist(recentYears.length - 5)
+                            : recentYears;
+                        double total5YGrowth = 0;
+                        int validYears = 0;
+                        for (int i = 1; i < recent5Years.length; i++) {
+                          int prev = trendData[recent5Years[i - 1]] ?? 0;
+                          int curr = trendData[recent5Years[i]] ?? 0;
+                          if (prev > 0) {
+                            total5YGrowth += (curr - prev) / prev;
+                            validYears++;
+                          }
+                        }
+                        double avgYoY = validYears > 0
+                            ? total5YGrowth / validYears
+                            : 0;
+                        int projectedNextYear =
+                            ((trendData[recentYears.last] ?? 0) * (1 + avgYoY))
+                                .round();
+                        if (projectedNextYear < 0) projectedNextYear = 0;
+
+                        return Padding(
+                          key: const ValueKey('trend_data'),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 20,
+                            horizontal: 16,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: MetricCard(
+                                      title: 'Total Volume',
+                                      value: AppFormatters.compactNumber(
+                                        totalPublications.toDouble(),
+                                      ),
+                                      subtitle:
+                                          '${minYear.toInt()} - ${maxYear.toInt()}',
+                                      icon: CupertinoIcons.doc_on_doc,
+                                      color: AppColors.brandBlue900,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: MetricCard(
+                                      title: 'Momentum',
+                                      value:
+                                          '${growthRate > 0 ? '+' : ''}${growthRate.toStringAsFixed(1)}%',
+                                      subtitle: 'vs previous year',
+                                      icon: growthRate >= 0
+                                          ? CupertinoIcons.arrow_up_right
+                                          : CupertinoIcons.arrow_down_right,
+                                      color: growthRate >= 0
+                                          ? AppColors.success
+                                          : AppColors.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              TrendLineChart(
+                                spots: spots,
+                                minX: minYear,
+                                maxX: maxYear,
+                                maxY: maxYValue,
+                              ),
+                              const SizedBox(height: 16),
+
+                              TrendInsightCard(
+                                peakYear: peakYear,
+                                formattedPeakCount: AppFormatters.formatNumber(
+                                  trendData[peakYear]!,
+                                ),
+                                growthRate: growthRate,
+                              ),
+                              const SizedBox(height: 16),
+
+                              Text(
+                                'Performance Breakdown',
+                                style: AppTextStyles.h3.copyWith(
+                                  fontSize: 16,
+                                  color: AppColors.brandBlue900,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TrendSmallStatBox(
+                                      title: 'Average / Year',
+                                      value: AppFormatters.compactNumber(
+                                        avgPerYear.toDouble(),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TrendSmallStatBox(
+                                      title: 'Current Status',
+                                      value: trendStatus,
+                                      valueColor: trendColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              TrendForecastCard(
+                                projectedCount: projectedNextYear,
+                                averageYoY: avgYoY,
+                                nextYear: lastYear + 1,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                    data: (trendData) {
-                      if (trendData.isEmpty) return const TrendEmptyState();
-
-                      final sortedYears = trendData.keys.toList()..sort();
-                      final currentYear = DateTime.now().year;
-                      final recentYears = sortedYears
-                          .where((y) => y >= currentYear - 20)
-                          .toList();
-
-                      if (recentYears.isEmpty) return const TrendEmptyState();
-
-                      final minYear = recentYears.first.toDouble();
-                      final maxYear = recentYears.last.toDouble();
-                      double maxYValue = 0;
-                      int totalPublications = 0;
-                      int peakYear = 0;
-
-                      final spots = <FlSpot>[];
-                      for (final year in recentYears) {
-                        final count = trendData[year]!.toDouble();
-                        if (count > maxYValue) {
-                          maxYValue = count;
-                          peakYear = year;
-                        }
-                        totalPublications += count.toInt();
-                        spots.add(FlSpot(year.toDouble(), count));
-                      }
-
-                      final lastYear = recentYears.last;
-                      final prevYear = recentYears.length > 1
-                          ? recentYears[recentYears.length - 2]
-                          : lastYear;
-                      final lastYearCount = trendData[lastYear] ?? 0;
-                      final prevYearCount = trendData[prevYear] ?? 0;
-
-                      double growthRate = 0;
-                      if (prevYearCount > 0) {
-                        growthRate =
-                            ((lastYearCount - prevYearCount) / prevYearCount) *
-                            100;
-                      }
-
-                      final avgPerYear =
-                          (totalPublications / recentYears.length).round();
-                      String trendStatus = "Stable ⚖️";
-                      Color trendColor = AppColors.textSecondary;
-                      if (growthRate > 5) {
-                        trendStatus = "Trending Up 🚀";
-                        trendColor = AppColors.success;
-                      } else if (growthRate < -5) {
-                        trendStatus = "Downtrend 📉";
-                        trendColor = AppColors.error;
-                      }
-
-                      final recent5Years = recentYears.length >= 5
-                          ? recentYears.sublist(recentYears.length - 5)
-                          : recentYears;
-                      double total5YGrowth = 0;
-                      int validYears = 0;
-                      for (int i = 1; i < recent5Years.length; i++) {
-                        int prev = trendData[recent5Years[i - 1]] ?? 0;
-                        int curr = trendData[recent5Years[i]] ?? 0;
-                        if (prev > 0) {
-                          total5YGrowth += (curr - prev) / prev;
-                          validYears++;
-                        }
-                      }
-                      double avgYoY = validYears > 0
-                          ? total5YGrowth / validYears
-                          : 0;
-                      int projectedNextYear =
-                          ((trendData[recentYears.last] ?? 0) * (1 + avgYoY))
-                              .round();
-                      if (projectedNextYear < 0) projectedNextYear = 0;
-
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          top: 20,
-                          left: 16,
-                          right: 16,
-                          bottom: bottomPadding + 40,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: MetricCard(
-                                    title: 'Total Volume',
-                                    value: AppFormatters.compactNumber(
-                                      totalPublications.toDouble(),
-                                    ),
-                                    subtitle:
-                                        '${minYear.toInt()} - ${maxYear.toInt()}',
-                                    icon: CupertinoIcons.doc_on_doc,
-                                    color: AppColors.brandBlue900,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: MetricCard(
-                                    title: 'Momentum',
-                                    value:
-                                        '${growthRate > 0 ? '+' : ''}${growthRate.toStringAsFixed(1)}%',
-                                    subtitle: 'vs previous year',
-                                    icon: growthRate >= 0
-                                        ? CupertinoIcons.arrow_up_right
-                                        : CupertinoIcons.arrow_down_right,
-                                    color: growthRate >= 0
-                                        ? AppColors.success
-                                        : AppColors.error,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-
-                            TrendLineChart(
-                              spots: spots,
-                              minX: minYear,
-                              maxX: maxYear,
-                              maxY: maxYValue,
-                            ),
-                            const SizedBox(height: 16),
-
-                            TrendInsightCard(
-                              peakYear: peakYear,
-                              formattedPeakCount: AppFormatters.formatNumber(
-                                trendData[peakYear]!,
-                              ),
-                              growthRate: growthRate,
-                            ),
-                            const SizedBox(height: 16),
-
-                            Text(
-                              'Performance Breakdown',
-                              style: AppTextStyles.h3.copyWith(
-                                fontSize: 16,
-                                color: AppColors.brandBlue900,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TrendSmallStatBox(
-                                    title: 'Average / Year',
-                                    value: AppFormatters.compactNumber(
-                                      avgPerYear.toDouble(),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: TrendSmallStatBox(
-                                    title: 'Current Status',
-                                    value: trendStatus,
-                                    valueColor: trendColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-
-                            TrendForecastCard(
-                              projectedCount: projectedNextYear,
-                              averageYoY: avgYoY,
-                              nextYear: lastYear + 1,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
                   ),
                 ),
               ],

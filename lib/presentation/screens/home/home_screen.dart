@@ -5,7 +5,7 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/presentation/controllers/trending_topic_controller.dart';
-import 'package:synapse/presentation/screens/home/widgets/header_delegate.dart';
+import 'package:synapse/presentation/screens/home/widgets/home_header_delegate.dart';
 import 'package:synapse/presentation/screens/home/widgets/square_feature_card.dart';
 import 'package:synapse/presentation/screens/home/widgets/topic_chip.dart';
 import 'package:synapse/presentation/screens/home/widgets/wide_feature_card.dart';
@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
             // HEADER
             SliverPersistentHeader(
               pinned: true,
-              delegate: HeaderDelegate(topPadding: topPadding),
+              delegate: HomeHeaderDelegate(topPadding: topPadding),
             ),
 
             // MODULES
@@ -116,35 +116,60 @@ class HomeScreen extends StatelessWidget {
                           trendingTopicControllerProvider,
                         );
 
-                        return trendingState.when(
-                          loading: () => Wrap(
-                            spacing: 10,
-                            runSpacing: 12,
-                            children: const [
-                              TopicChipSkeleton(width: 120),
-                              TopicChipSkeleton(width: 160),
-                              TopicChipSkeleton(width: 100),
-                              TopicChipSkeleton(width: 140),
-                              TopicChipSkeleton(width: 180),
-                              TopicChipSkeleton(width: 130),
-                            ],
-                          ),
-
-                          error: (err, stack) => Text(
-                            'Unable to load trends. Please check your connection.',
-                            style: AppTextStyles.metadata,
-                          ),
-
-                          data: (topics) {
-                            if (topics.isEmpty) return const SizedBox();
-                            return Wrap(
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 400),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          layoutBuilder:
+                              (
+                                Widget? currentChild,
+                                List<Widget> previousChildren,
+                              ) {
+                                return Stack(
+                                  alignment: Alignment.topLeft,
+                                  children: <Widget>[
+                                    ...previousChildren,
+                                    ?currentChild,
+                                  ],
+                                );
+                              },
+                          child: trendingState.when(
+                            loading: () => Wrap(
+                              key: const ValueKey('trending_skeleton'),
                               spacing: 10,
                               runSpacing: 12,
-                              children: topics.map((topic) {
-                                return TopicChip(topic: topic);
-                              }).toList(),
-                            );
-                          },
+                              children: const [
+                                TopicChipSkeleton(width: 120),
+                                TopicChipSkeleton(width: 160),
+                                TopicChipSkeleton(width: 100),
+                                TopicChipSkeleton(width: 140),
+                                TopicChipSkeleton(width: 180),
+                                TopicChipSkeleton(width: 130),
+                              ],
+                            ),
+
+                            error: (err, stack) => Text(
+                              key: const ValueKey('trending_error'),
+                              'Unable to load trends. Please check your connection.',
+                              style: AppTextStyles.metadata,
+                            ),
+
+                            data: (topics) {
+                              if (topics.isEmpty) {
+                                return const SizedBox(
+                                  key: ValueKey('trending_empty'),
+                                );
+                              }
+                              return Wrap(
+                                key: const ValueKey('trending_data'),
+                                spacing: 10,
+                                runSpacing: 12,
+                                children: topics.map((topic) {
+                                  return TopicChip(topic: topic);
+                                }).toList(),
+                              );
+                            },
+                          ),
                         );
                       },
                     ),

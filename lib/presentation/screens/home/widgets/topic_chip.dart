@@ -6,7 +6,7 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
-import 'package:synapse/presentation/controllers/search_controller.dart';
+import 'package:synapse/presentation/controllers/publication_search_controller.dart';
 
 class TopicChip extends ConsumerWidget {
   final TopicEntity topic;
@@ -17,7 +17,9 @@ class TopicChip extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
       onTap: () {
-        ref.read(searchControllerProvider.notifier).searchByTopicId(topic);
+        ref
+            .read(publicationSearchControllerProvider.notifier)
+            .searchByTopicId(topic);
 
         context.push(AppRoutes.search);
       },

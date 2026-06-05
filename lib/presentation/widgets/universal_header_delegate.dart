@@ -3,21 +3,32 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
-import 'package:synapse/presentation/widgets/search_bar.dart';
+import 'package:synapse/presentation/widgets/universal_search_bar.dart';
 
-class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
+class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double topPadding;
-  final String currentTitle;
+  final String title;
+  final String subtitle;
   final double focusProgress;
-  final ValueChanged<bool> onFocusChanged;
-  final Function(String keyword, {String? topicId, String? topicName}) onSearch;
 
-  TrendHeaderDelegate({
+  final String searchBarHintText;
+  final String searchBarInitialValue;
+  final bool restoreOnEmptySubmit;
+  final ValueChanged<bool> onFocusChanged;
+  final Function(String) onSubmitted;
+  final Function(dynamic) onTopicSelected;
+
+  UniversalHeaderDelegate({
     required this.topPadding,
-    required this.currentTitle,
+    required this.title,
+    required this.subtitle,
     this.focusProgress = 0.0,
+    this.searchBarHintText = 'Search for topics...',
+    this.searchBarInitialValue = '',
+    this.restoreOnEmptySubmit = false,
     required this.onFocusChanged,
-    required this.onSearch,
+    required this.onSubmitted,
+    required this.onTopicSelected,
   });
 
   @override
@@ -32,10 +43,12 @@ class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => topPadding + 65.0;
 
   @override
-  bool shouldRebuild(covariant TrendHeaderDelegate oldDelegate) {
-    return oldDelegate.currentTitle != currentTitle ||
+  bool shouldRebuild(covariant UniversalHeaderDelegate oldDelegate) {
+    return oldDelegate.title != title ||
+        oldDelegate.subtitle != subtitle ||
         oldDelegate.topPadding != topPadding ||
-        oldDelegate.focusProgress != focusProgress;
+        oldDelegate.focusProgress != focusProgress ||
+        oldDelegate.searchBarInitialValue != searchBarInitialValue;
   }
 
   @override
@@ -59,7 +72,7 @@ class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double titleOpacity = (1.0 - focusProgress).clamp(0.0, 1.0);
 
     final double searchBarOpacity =
-        ((1.0 - (scrollProgress * 2.1)).clamp(0.0, 1.0) + focusProgress).clamp(
+        ((1.0 - (scrollProgress * 2.0)).clamp(0.0, 1.0) + focusProgress).clamp(
           0.0,
           1.0,
         );
@@ -78,7 +91,7 @@ class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double titleScale = 1.0 - (0.27 * collapseProgress);
     final double subScale = 1.0 - (0.14 * collapseProgress);
 
-    final double unfocusedTop = (expandedHeight - shrinkOffset) - 64.0;
+    final double unfocusedTop = expandedHeight - 64.0;
     final double focusedTop = topPadding + 8.0;
     final double searchBarTop =
         unfocusedTop + ((focusedTop - unfocusedTop) * focusProgress);
@@ -95,6 +108,7 @@ class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
       ),
       child: Stack(
         fit: StackFit.expand,
+        clipBehavior: Clip.hardEdge,
         children: [
           Positioned(
             top: topPadding + 8.0,
@@ -114,7 +128,7 @@ class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
                 scale: titleScale,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Trend Analysis',
+                  title,
                   style: AppTextStyles.h2.copyWith(
                     color: Colors.white,
                     letterSpacing: 0.5,
@@ -134,7 +148,7 @@ class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
                 scale: subScale,
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  currentTitle,
+                  subtitle,
                   style: AppTextStyles.metadata.copyWith(
                     color: Colors.white.withValues(alpha: 0.85),
                     fontStyle: FontStyle.italic,
@@ -156,15 +170,14 @@ class TrendHeaderDelegate extends SliverPersistentHeaderDelegate {
               child: Opacity(
                 opacity: searchBarOpacity,
                 child: UniversalSearchBar(
-                  hintText: 'Search topic to analyze trend...',
+                  key: ValueKey(searchBarInitialValue),
+                  initialValue: searchBarInitialValue,
+                  hintText: searchBarHintText,
                   enableAutocomplete: true,
+                  restoreOnEmptySubmit: restoreOnEmptySubmit,
                   onFocusChanged: onFocusChanged,
-                  onSubmitted: (keyword) => onSearch(keyword),
-                  onTopicSelected: (topic) => onSearch(
-                    topic.displayName,
-                    topicId: topic.id,
-                    topicName: topic.displayName,
-                  ),
+                  onSubmitted: onSubmitted,
+                  onTopicSelected: onTopicSelected,
                 ),
               ),
             ),
