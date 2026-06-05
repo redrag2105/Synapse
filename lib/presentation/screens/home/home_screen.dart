@@ -21,134 +21,139 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surfaceGray,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          // HEADER
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: HeaderDelegate(topPadding: topPadding),
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
           ),
-
-          // MODULES
-          SliverPadding(
-            padding: const EdgeInsets.only(top: 24, left: 16, right: 16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                const WideFeatureCard(
-                  title: 'Topic Search & Discovery',
-                  subtitle: 'Explore 250M+ scholarly works across disciplines.',
-                  icon: CupertinoIcons.search,
-                  route: AppRoutes.search,
-                ),
-                const SizedBox(height: 12),
-
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Expanded(
-                        child: SquareFeatureCard(
-                          title: 'Trend\nAnalysis',
-                          subtitle: 'Track growth',
-                          icon: CupertinoIcons.graph_square,
-                          route: AppRoutes.trend,
-                          isInverted: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: SquareFeatureCard(
-                          title: 'Leading\nJournals',
-                          subtitle: 'Top sources',
-                          icon: CupertinoIcons.book,
-                          route: AppRoutes.topJournals,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                const WideFeatureCard(
-                  title: 'Top Authors & Researchers',
-                  subtitle:
-                      'Identify influential pioneers driving the conversation.',
-                  icon: CupertinoIcons.person_3,
-                  route: AppRoutes.topAuthors,
-                ),
-              ]),
+          slivers: [
+            // HEADER
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: HeaderDelegate(topPadding: topPadding),
             ),
-          ),
 
-          // SUGGESTED TOPICS
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: 32,
-                left: 20,
-                right: 20,
-                bottom: bottomPadding + 32,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Trending Research Topics (${currentYear - 2}–$currentYear)',
-                    style: AppTextStyles.h3.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                      letterSpacing: 0.5,
-                      fontWeight: FontWeight.w600,
+            // MODULES
+            SliverPadding(
+              padding: const EdgeInsets.only(top: 24, left: 16, right: 16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  const WideFeatureCard(
+                    title: 'Topic Search & Discovery',
+                    subtitle:
+                        'Explore 250M+ scholarly works across disciplines.',
+                    icon: CupertinoIcons.search,
+                    route: AppRoutes.search,
+                  ),
+                  const SizedBox(height: 12),
+
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Expanded(
+                          child: SquareFeatureCard(
+                            title: 'Trend\nAnalysis',
+                            subtitle: 'Track growth',
+                            icon: CupertinoIcons.graph_square,
+                            route: AppRoutes.trend,
+                            isInverted: true,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: SquareFeatureCard(
+                            title: 'Leading\nJournals',
+                            subtitle: 'Top sources',
+                            icon: CupertinoIcons.book,
+                            route: AppRoutes.topJournals,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final trendingState = ref.watch(
-                        trendingTopicControllerProvider,
-                      );
-
-                      return trendingState.when(
-                        loading: () => Wrap(
-                          spacing: 10,
-                          runSpacing: 12,
-                          children: const [
-                            TopicChipSkeleton(width: 120),
-                            TopicChipSkeleton(width: 160),
-                            TopicChipSkeleton(width: 100),
-                            TopicChipSkeleton(width: 140),
-                            TopicChipSkeleton(width: 180),
-                            TopicChipSkeleton(width: 130),
-                          ],
-                        ),
-
-                        error: (err, stack) => Text(
-                          'Unable to load trends. Please check your connection.',
-                          style: AppTextStyles.metadata,
-                        ),
-
-                        data: (topics) {
-                          if (topics.isEmpty) return const SizedBox();
-                          return Wrap(
-                            spacing: 10,
-                            runSpacing: 12,
-                            children: topics.map((topic) {
-                              return TopicChip(topic: topic);
-                            }).toList(),
-                          );
-                        },
-                      );
-                    },
+                  const WideFeatureCard(
+                    title: 'Top Authors & Researchers',
+                    subtitle:
+                        'Identify influential pioneers driving the conversation.',
+                    icon: CupertinoIcons.person_3,
+                    route: AppRoutes.topAuthors,
                   ),
-                ],
+                ]),
               ),
             ),
-          ),
-        ],
+
+            // SUGGESTED TOPICS
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: 32,
+                  left: 20,
+                  right: 20,
+                  bottom: bottomPadding + 32,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Trending Research Topics (${currentYear - 2}–$currentYear)',
+                      style: AppTextStyles.h3.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final trendingState = ref.watch(
+                          trendingTopicControllerProvider,
+                        );
+
+                        return trendingState.when(
+                          loading: () => Wrap(
+                            spacing: 10,
+                            runSpacing: 12,
+                            children: const [
+                              TopicChipSkeleton(width: 120),
+                              TopicChipSkeleton(width: 160),
+                              TopicChipSkeleton(width: 100),
+                              TopicChipSkeleton(width: 140),
+                              TopicChipSkeleton(width: 180),
+                              TopicChipSkeleton(width: 130),
+                            ],
+                          ),
+
+                          error: (err, stack) => Text(
+                            'Unable to load trends. Please check your connection.',
+                            style: AppTextStyles.metadata,
+                          ),
+
+                          data: (topics) {
+                            if (topics.isEmpty) return const SizedBox();
+                            return Wrap(
+                              spacing: 10,
+                              runSpacing: 12,
+                              children: topics.map((topic) {
+                                return TopicChip(topic: topic);
+                              }).toList(),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

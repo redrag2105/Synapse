@@ -43,23 +43,31 @@ class PublicationRepositoryImpl implements PublicationRepository {
 
   @override
   Future<Either<Failure, Map<int, int>>> getPublicationTrendByTopicId(
-    String topicId,
+    String? topicId,
   ) async {
     try {
+      String? filter;
+      if (topicId != null && topicId.isNotEmpty) {
+        final cleanId = topicId.split('/').last;
+        filter = 'topics.id:$cleanId';
+      }
+
       final response = await _apiPublication.getWorks(
-        filter: 'topics.id:$topicId',
+        filter: filter,
         groupBy: 'publication_year',
       );
 
       final groups = response['group_by'] as List;
       final Map<int, int> trendData = {};
 
-      for (var group in groups) {
-        final keyStr = group['key'].toString();
-        final count = group['count'] as int;
-        final year = int.tryParse(keyStr);
+      final currentYear = DateTime.now().year;
 
-        if (year != null && year > 1900 && year <= DateTime.now().year + 1) {
+      for (var group in groups) {
+        final yearStr = group['key'].toString();
+        final year = int.tryParse(yearStr);
+        final count = group['count'] as int;
+
+        if (year != null && year >= 1950 && year <= currentYear) {
           trendData[year] = count;
         }
       }

@@ -11,7 +11,7 @@ abstract class PublicationRepository {
   });
 
   Future<Either<Failure, Map<int, int>>> getPublicationTrendByTopicId(
-    String topicId,
+    String? topicId,
   );
 
   Future<Either<Failure, PublicationEntity>> getPublicationById(String id);

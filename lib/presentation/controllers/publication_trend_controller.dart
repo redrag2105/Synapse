@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/di/providers.dart';
-import 'package:synapse/domain/usecases/publication/get_publication_trend_usecase.dart';
+import 'package:synapse/app/utils/app_logger.dart';
+import 'package:synapse/domain/usecases/publication/get_publication_trend_usecase.dart'; // Import class Params
 
 final publicationTrendControllerProvider =
     AsyncNotifierProvider.autoDispose<
@@ -15,17 +16,34 @@ class PublicationTrendController extends AsyncNotifier<Map<int, int>> {
     return {};
   }
 
-  Future<void> fetchTrend(String keyword) async {
-    if (keyword.trim().isEmpty) return;
-
+  // Cho phép nhận vào topicId hoặc keyword
+  Future<void> fetchTrend({String? topicId, String? keyword}) async {
+    AppLogger.i(
+      '📊 Đang tải Trend Data | TopicId: $topicId | Keyword: $keyword',
+    );
     state = const AsyncValue.loading();
+    final stopwatch = Stopwatch()..start();
 
     final useCase = ref.read(getPublicationTrendUseCaseProvider);
-    final result = await useCase(GetPublicationTrendParams(keyword: keyword));
+
+    // Gói vào Params mới
+    final result = await useCase(
+      GetPublicationTrendParams(topicId: topicId, keyword: keyword),
+    );
 
     result.fold(
-      (failure) => state = AsyncValue.error(failure, StackTrace.current),
-      (trendData) => state = AsyncValue.data(trendData),
+      (failure) {
+        stopwatch.stop();
+        AppLogger.e('⚠️ Lỗi Trend Data: ${failure.message}');
+        state = AsyncValue.error(failure, StackTrace.current);
+      },
+      (trendData) {
+        stopwatch.stop();
+        AppLogger.i(
+          '🎉 Tải Trend Data thành công trong ${stopwatch.elapsedMilliseconds}ms',
+        );
+        state = AsyncValue.data(trendData);
+      },
     );
   }
 }

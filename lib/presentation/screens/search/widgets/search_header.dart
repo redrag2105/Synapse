@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
-import 'search_autocomplete_bar.dart';
+import 'package:synapse/presentation/controllers/search_controller.dart';
+import 'package:synapse/presentation/widgets/search_bar.dart';
 
-class SearchHeader extends StatelessWidget {
+class SearchHeader extends ConsumerWidget {
   final bool isFocused;
   final ValueChanged<bool> onFocusChanged;
 
@@ -14,7 +16,7 @@ class SearchHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -53,7 +55,21 @@ class SearchHeader extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-              child: SearchAutocompleteBar(onFocusChanged: onFocusChanged),
+              child: UniversalSearchBar(
+                initialValue: ref
+                    .read(searchControllerProvider.notifier)
+                    .lastQuery,
+                hintText: 'Search for topics...',
+                onFocusChanged: onFocusChanged,
+                onSubmitted: (query) {
+                  ref.read(searchControllerProvider.notifier).search(query);
+                },
+                onTopicSelected: (topic) {
+                  ref
+                      .read(searchControllerProvider.notifier)
+                      .searchByTopicId(topic);
+                },
+              ),
             ),
           ],
         ),
