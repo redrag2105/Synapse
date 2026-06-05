@@ -5,8 +5,10 @@ import 'package:synapse/domain/repositories/publication_repository.dart';
 import 'package:synapse/domain/repositories/topic_repository.dart';
 
 class GetPublicationTrendParams {
-  final String keyword;
-  GetPublicationTrendParams({required this.keyword});
+  final String? keyword;
+  final String? topicId;
+
+  GetPublicationTrendParams({this.keyword, this.topicId});
 }
 
 class GetPublicationTrendUseCase
@@ -23,22 +25,31 @@ class GetPublicationTrendUseCase
   Future<Either<Failure, Map<int, int>>> call(
     GetPublicationTrendParams params,
   ) async {
-    final topicResult = await _topicRepository.searchTopics(
-      params.keyword,
-      limit: 1,
-    );
+    String? finalTopicId = params.topicId;
 
-    return topicResult.fold((failure) async => Left(failure), (topics) async {
-      if (topics.isEmpty) {
-        return const Left(
-          NotFoundFailure(
-            'Không tìm thấy chủ đề nghiên cứu để phân tích xu hướng.',
-          ),
+    // Nếu KHÔNG có sẵn topicId, NHƯNG lại CÓ keyword -> Đi tìm Topic
+    if (finalTopicId == null &&
+        params.keyword != null &&
+        params.keyword!.isNotEmpty) {
+      final topicResult = await _topicRepository.searchTopics(
+        params.keyword!,
+        limit: 1,
+      );
+
+      return topicResult.fold((failure) async => Left(failure), (topics) async {
+        if (topics.isEmpty) {
+          return const Right({});
+        }
+
+        finalTopicId = topics.first.id.split('/').last;
+        return await _publicationRepository.getPublicationTrendByTopicId(
+          finalTopicId,
         );
-      }
+      });
+    }
 
-      final topicId = topics.first.id.split('/').last;
-      return await _publicationRepository.getPublicationTrendByTopicId(topicId);
-    });
+    return await _publicationRepository.getPublicationTrendByTopicId(
+      finalTopicId,
+    );
   }
 }

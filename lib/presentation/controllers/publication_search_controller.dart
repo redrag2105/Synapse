@@ -7,13 +7,14 @@ import 'package:synapse/domain/entities/publication_entity.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
 
-final searchControllerProvider =
+final publicationSearchControllerProvider =
     AsyncNotifierProvider.autoDispose<
-      SearchController,
+      PublicationSearchController,
       List<PublicationEntity>
-    >(SearchController.new);
+    >(PublicationSearchController.new);
 
-class SearchController extends AsyncNotifier<List<PublicationEntity>> {
+class PublicationSearchController
+    extends AsyncNotifier<List<PublicationEntity>> {
   final Map<String, List<PublicationEntity>> _cache = {};
 
   KeepAliveLink? _link;

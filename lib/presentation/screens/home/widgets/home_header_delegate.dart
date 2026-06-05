@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 
-class HeaderDelegate extends SliverPersistentHeaderDelegate {
+class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double topPadding;
 
-  HeaderDelegate({required this.topPadding});
+  HomeHeaderDelegate({required this.topPadding});
 
   @override
   double get maxExtent => topPadding + 220.0;

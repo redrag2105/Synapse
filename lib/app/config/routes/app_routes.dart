@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/presentation/screens/home/home_screen.dart';
 import 'package:synapse/presentation/screens/publication_detail/publication_detail_screen.dart';
-import 'package:synapse/presentation/screens/search/search_screen.dart';
+import 'package:synapse/presentation/screens/search/publication_search_screen.dart';
+import 'package:synapse/presentation/screens/trend/trend_screen.dart';
 
 class AppRoutes {
   static const String home = '/';
@@ -25,7 +26,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.search,
-        builder: (context, state) => const SearchScreen(),
+        builder: (context, state) => const PublicationSearchScreen(),
       ),
       GoRoute(
         path: '${AppRoutes.publicationDetail}/:id',
@@ -36,8 +37,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.trend,
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Trend Analysis'),
+        builder: (context, state) => const TrendScreen(),
       ),
       GoRoute(
         path: AppRoutes.topAuthors,

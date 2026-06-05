@@ -71,4 +71,19 @@ class AppFormatters {
         ? '${type[0].toUpperCase()}${type.substring(1)}'
         : 'Article';
   }
+
+  /// Format số có dấu phẩy (VD: 1,234,567)
+  static String formatNumber(int number) {
+    return number.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+
+  /// Format số rút gọn (VD: 1.2M, 350.5K)
+  static String compactNumber(double number) {
+    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
+    if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
+    return number.toInt().toString();
+  }
 }

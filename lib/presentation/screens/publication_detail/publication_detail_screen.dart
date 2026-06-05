@@ -20,17 +20,22 @@ class PublicationDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 500),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        child: SafeArea(
-          top: false,
-          bottom: true,
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+            return Stack(
+              alignment: Alignment.topCenter,
+              children: <Widget>[...previousChildren, ?currentChild],
+            );
+          },
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(opacity: animation, child: child);
+          },
           child: detailState.when(
             loading: () => const PublicationDetailSkeleton(
               key: ValueKey('loading_detail'),

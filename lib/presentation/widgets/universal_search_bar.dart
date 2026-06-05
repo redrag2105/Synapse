@@ -5,30 +5,48 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/di/providers.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
-import 'package:synapse/presentation/controllers/search_controller.dart';
 
-class SearchAutocompleteBar extends ConsumerStatefulWidget {
-  final ValueChanged<bool> onFocusChanged;
+class UniversalSearchBar extends ConsumerStatefulWidget {
+  final String initialValue;
+  final String hintText;
+  final bool enableAutocomplete;
+  final bool restoreOnEmptySubmit;
+  final ValueChanged<bool>? onFocusChanged;
+  final ValueChanged<String>? onSubmitted;
+  final ValueChanged<TopicEntity>? onTopicSelected;
+  final VoidCallback? onCleared;
 
-  const SearchAutocompleteBar({super.key, required this.onFocusChanged});
+  const UniversalSearchBar({
+    super.key,
+    this.initialValue = '',
+    this.hintText = 'Search...',
+    this.enableAutocomplete = true,
+    this.restoreOnEmptySubmit = true,
+    this.onFocusChanged,
+    this.onSubmitted,
+    this.onTopicSelected,
+    this.onCleared,
+  });
 
   @override
-  ConsumerState<SearchAutocompleteBar> createState() =>
-      _SearchAutocompleteBarState();
+  ConsumerState<UniversalSearchBar> createState() => _UniversalSearchBarState();
 }
 
-class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
+class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
   bool _isFocused = false;
   bool _isLoadingHints = false;
 
+  bool _isSubmittingEmpty = false;
+
   @override
   Widget build(BuildContext context) {
-    final initialQuery = ref.read(searchControllerProvider.notifier).lastQuery;
-
     return Autocomplete<TopicEntity>(
-      initialValue: TextEditingValue(text: initialQuery),
+      initialValue: TextEditingValue(text: widget.initialValue),
+
       optionsBuilder: (TextEditingValue textValue) async {
-        if (textValue.text.trim().isEmpty || !_isFocused) {
+        if (!widget.enableAutocomplete ||
+            textValue.text.trim().isEmpty ||
+            !_isFocused) {
           return const Iterable<TopicEntity>.empty();
         }
 
@@ -42,23 +60,26 @@ class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
           (topics) => topics,
         );
       },
+
       displayStringForOption: (TopicEntity option) => option.displayName,
+
       onSelected: (TopicEntity selection) {
-        ref.read(searchControllerProvider.notifier).searchByTopicId(selection);
         FocusManager.instance.primaryFocus?.unfocus();
+        widget.onTopicSelected?.call(selection);
       },
+
       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
         return Focus(
           onFocusChange: (hasFocus) {
             setState(() => _isFocused = hasFocus);
-            widget.onFocusChanged(hasFocus);
-
+            widget.onFocusChanged?.call(hasFocus);
             if (!hasFocus) {
-              final lastQuery = ref
-                  .read(searchControllerProvider.notifier)
-                  .lastQuery;
-              if (controller.text.trim().isEmpty && lastQuery.isNotEmpty) {
-                controller.text = lastQuery;
+              if (controller.text.trim().isEmpty) {
+                if (_isSubmittingEmpty) {
+                  _isSubmittingEmpty = false;
+                } else if (widget.initialValue.isNotEmpty) {
+                  controller.text = widget.initialValue;
+                }
               }
             }
           },
@@ -83,6 +104,7 @@ class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
                   ),
                   onPressed: () {
                     controller.clear();
+                    widget.onCleared?.call();
                   },
                 );
               }
@@ -93,15 +115,23 @@ class _SearchAutocompleteBarState extends ConsumerState<SearchAutocompleteBar> {
                 textInputAction: TextInputAction.search,
                 style: AppTextStyles.bodyText,
                 onSubmitted: (searchText) {
-                  focusNode.unfocus();
                   final query = searchText.trim();
 
-                  if (query.isNotEmpty) {
-                    ref.read(searchControllerProvider.notifier).search(query);
+                  if (query.isEmpty) {
+                    if (widget.restoreOnEmptySubmit) {
+                      focusNode.unfocus();
+                    } else {
+                      _isSubmittingEmpty = true;
+                      focusNode.unfocus();
+                      widget.onSubmitted?.call('');
+                    }
+                  } else {
+                    focusNode.unfocus();
+                    widget.onSubmitted?.call(query);
                   }
                 },
                 decoration: InputDecoration(
-                  hintText: 'Search for topics...',
+                  hintText: widget.hintText,
                   hintStyle: const TextStyle(color: Colors.black45),
                   prefixIcon: const Icon(
                     CupertinoIcons.search,
