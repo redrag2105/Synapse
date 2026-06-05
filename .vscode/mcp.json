@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"OpenAlex Developers": {
+			"url": "https://developers.openalex.org/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}
