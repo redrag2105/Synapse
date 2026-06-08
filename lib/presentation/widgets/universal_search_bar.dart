@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,8 +36,15 @@ class UniversalSearchBar extends ConsumerStatefulWidget {
 class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
   bool _isFocused = false;
   bool _isLoadingHints = false;
-
   bool _isSubmittingEmpty = false;
+
+  Timer? _debounceTimer;
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,15 +58,27 @@ class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
           return const Iterable<TopicEntity>.empty();
         }
 
-        setState(() => _isLoadingHints = true);
-        final useCase = ref.read(getTopicHintsUseCaseProvider);
-        final result = await useCase(textValue.text);
-        if (mounted) setState(() => _isLoadingHints = false);
+        _debounceTimer?.cancel();
 
-        return result.fold(
-          (failure) => const Iterable<TopicEntity>.empty(),
-          (topics) => topics,
-        );
+        final completer = Completer<Iterable<TopicEntity>>();
+
+        _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
+          if (mounted) setState(() => _isLoadingHints = true);
+
+          final useCase = ref.read(getTopicHintsUseCaseProvider);
+          final result = await useCase(textValue.text);
+
+          if (mounted) setState(() => _isLoadingHints = false);
+
+          completer.complete(
+            result.fold(
+              (failure) => const Iterable<TopicEntity>.empty(),
+              (topics) => topics,
+            ),
+          );
+        });
+
+        return completer.future;
       },
 
       displayStringForOption: (TopicEntity option) => option.displayName,
@@ -154,54 +174,72 @@ class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
           ),
         );
       },
+
       optionsViewBuilder: (context, onSelected, options) {
         return Align(
           alignment: Alignment.topLeft,
           child: Padding(
             padding: const EdgeInsets.only(top: 8.0, bottom: 24.0),
-            child: Material(
-              elevation: 8,
-              shadowColor: Colors.black26,
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 450),
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width - 32,
-                  child: ListView.separated(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1, color: AppColors.borderGray),
-                    itemBuilder: (context, index) {
-                      final option = options.elementAt(index);
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
+
+            child: ExcludeFocus(
+              child: Material(
+                elevation: 8,
+                shadowColor: Colors.black26,
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 450),
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width - 32,
+
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (ScrollNotification notification) {
+                        return true;
+                      },
+                      child: ListView.separated(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+
+                        primary: false,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.manual,
+                        physics: const BouncingScrollPhysics(),
+
+                        itemCount: options.length,
+                        separatorBuilder: (context, index) => const Divider(
+                          height: 1,
+                          color: AppColors.borderGray,
                         ),
-                        leading: const Icon(
-                          CupertinoIcons.search,
-                          color: AppColors.textSecondary,
-                          size: 20,
-                        ),
-                        title: Text(
-                          option.displayName,
-                          style: AppTextStyles.button.copyWith(
-                            color: AppColors.brandBlue900,
-                          ),
-                        ),
-                        subtitle: Text(
-                          option.description ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.metadata,
-                        ),
-                        onTap: () => onSelected(option),
-                      );
-                    },
+                        itemBuilder: (context, index) {
+                          final option = options.elementAt(index);
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            leading: const Icon(
+                              CupertinoIcons.search,
+                              color: AppColors.textSecondary,
+                              size: 20,
+                            ),
+                            title: Text(
+                              option.displayName,
+                              style: AppTextStyles.button.copyWith(
+                                color: AppColors.brandBlue900,
+                              ),
+                            ),
+                            subtitle: Text(
+                              option.description ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.metadata,
+                            ),
+                            onTap: () => onSelected(option),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),

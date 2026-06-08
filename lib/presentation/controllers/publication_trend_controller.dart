@@ -22,6 +22,14 @@ class PublicationTrendController extends AsyncNotifier<Map<int, int>> {
   String? lastTopicId;
   String? lastTopicName;
 
+  String? pendingExternalKeyword;
+  String? pendingExternalTopicName;
+
+  void setExternalNavigation(String keyword, String topicName) {
+    pendingExternalKeyword = keyword;
+    pendingExternalTopicName = topicName;
+  }
+
   @override
   FutureOr<Map<int, int>> build() {
     _keepAliveTemporarily();
@@ -48,6 +56,7 @@ class PublicationTrendController extends AsyncNotifier<Map<int, int>> {
     String? topicId,
     String? keyword,
     String? topicName,
+    bool saveHistory = true,
   }) async {
     _keepAliveTemporarily();
     final requestId = ++_currentRequestId;
@@ -57,14 +66,16 @@ class PublicationTrendController extends AsyncNotifier<Map<int, int>> {
         (topicId == null &&
         (normalizedKeyword == null || normalizedKeyword.isEmpty));
 
-    if (isGlobal) {
-      lastQuery = '';
-      lastTopicId = null;
-      lastTopicName = null;
-    } else {
-      lastQuery = normalizedKeyword ?? '';
-      lastTopicId = topicId;
-      lastTopicName = topicName;
+    if (saveHistory) {
+      if (isGlobal) {
+        lastQuery = '';
+        lastTopicId = null;
+        lastTopicName = null;
+      } else {
+        lastQuery = normalizedKeyword ?? '';
+        lastTopicId = topicId;
+        lastTopicName = topicName;
+      }
     }
 
     String cacheKey = 'global';

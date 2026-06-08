@@ -1,11 +1,15 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
+import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/presentation/controllers/publication_search_controller.dart';
+import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
 import 'package:synapse/presentation/screens/search/widgets/publication_card.dart';
 import 'package:synapse/presentation/screens/search/widgets/publication_card_skeleton.dart';
 import 'package:synapse/presentation/screens/search/widgets/search_empty_state.dart';
+import 'package:synapse/presentation/screens/search/widgets/smart_trend_button.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
 
 class PublicationSearchScreen extends ConsumerStatefulWidget {
@@ -54,6 +58,7 @@ class _PublicationSearchScreenState
     final lastQuery = ref
         .watch(publicationSearchControllerProvider.notifier)
         .lastQuery;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -207,6 +212,28 @@ class _PublicationSearchScreenState
                   ),
                 );
               },
+            ),
+
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              // Tự động thụt xuống ẩn đi nếu đang gõ phím, đang tải hoặc keyword rỗng
+              bottom: (_isFocused || lastQuery.isEmpty || searchState.isLoading)
+                  ? -100
+                  : bottomPadding + 24,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: SmartTrendButton(
+                  keyword: lastQuery,
+                  onTap: () {
+                    ref
+                        .read(publicationTrendControllerProvider.notifier)
+                        .setExternalNavigation(lastQuery, lastQuery);
+                    context.push(AppRoutes.trend);
+                  },
+                ),
+              ),
             ),
           ],
         ),
