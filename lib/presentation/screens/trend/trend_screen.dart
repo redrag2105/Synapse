@@ -383,7 +383,7 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
                                         ? '__ALL__'
                                         : _currentTitle;
                                     context.push(
-                                      '${AppRoutes.dashboard}/$keywordToPass',
+                                      '${AppRoutes.dashboard}/${Uri.encodeComponent(keywordToPass)}',
                                     );
                                   },
                                   icon: const Icon(

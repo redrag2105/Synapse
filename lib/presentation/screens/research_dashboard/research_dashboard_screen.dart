@@ -38,7 +38,19 @@ class _ResearchDashboardScreenState
   void initState() {
     super.initState();
     _actualKeyword = widget.keyword == '__ALL__' ? '' : widget.keyword;
+    _fetchData();
+  }
 
+  @override
+  void didUpdateWidget(ResearchDashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.keyword != widget.keyword) {
+      _actualKeyword = widget.keyword == '__ALL__' ? '' : widget.keyword;
+      _fetchData();
+    }
+  }
+
+  void _fetchData() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(topAuthorsControllerProvider.notifier)
