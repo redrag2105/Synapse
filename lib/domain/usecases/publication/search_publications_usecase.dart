@@ -28,6 +28,14 @@ class SearchPublicationsUseCase
   Future<Either<Failure, List<PublicationEntity>>> call(
     SearchPublicationsParams params,
   ) async {
+    if (params.keyword.isEmpty) {
+      return await _publicationRepository.getPublicationsByTopicId(
+        '',
+        page: params.page,
+        limit: params.limit,
+      );
+    }
+
     final topicResult = await _topicRepository.searchTopics(
       params.keyword,
       limit: 1,

@@ -22,6 +22,13 @@ class GetTopAuthorsUseCase
   Future<Either<Failure, List<AuthorEntity>>> call(
     GetTopAuthorsParams params,
   ) async {
+    if (params.keyword.isEmpty) {
+      return await _authorRepository.getTopAuthorsByTopicId(
+        '',
+        limit: params.limit,
+      );
+    }
+
     final topicResult = await _topicRepository.searchTopics(
       params.keyword,
       limit: 1,

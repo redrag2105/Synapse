@@ -22,6 +22,13 @@ class GetTopJournalsUseCase
   Future<Either<Failure, List<JournalEntity>>> call(
     GetTopJournalsParams params,
   ) async {
+    if (params.keyword.isEmpty) {
+      return await _journalRepository.getTopJournalsByTopicId(
+        '',
+        limit: params.limit,
+      );
+    }
+
     final topicResult = await _topicRepository.searchTopics(
       params.keyword,
       limit: 1,

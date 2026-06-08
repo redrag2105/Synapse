@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
+import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
@@ -31,28 +33,45 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
   bool _isSearchBarFocused = false;
   late final AnimationController _focusAnimController;
 
+  bool _isIsolatedMode = false;
+
   @override
   void initState() {
     super.initState();
-
     _focusAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
 
     final notifier = ref.read(publicationTrendControllerProvider.notifier);
-    final currentState = ref.read(publicationTrendControllerProvider);
     final hasNewArgs = widget.topicId != null || widget.topicName != null;
+    final extKeyword = notifier.pendingExternalKeyword;
+    final extTopicName = notifier.pendingExternalTopicName;
 
-    if (hasNewArgs) {
+    if (extKeyword != null) {
+      _isIsolatedMode = true;
+      _currentTitle = extTopicName ?? extKeyword;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifier.fetchTrend(
+          keyword: extKeyword,
+          topicName: extTopicName,
+          saveHistory: false,
+        );
+      });
+      notifier.pendingExternalKeyword = null;
+      notifier.pendingExternalTopicName = null;
+    } else if (hasNewArgs) {
+      _isIsolatedMode = true;
       _currentTitle = widget.topicName ?? 'Global Research Publications';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         notifier.fetchTrend(
           topicId: widget.topicId,
           topicName: widget.topicName,
+          saveHistory: false,
         );
       });
     } else {
+      _isIsolatedMode = false;
       final lastQuery = notifier.lastQuery;
       final lastTopicName = notifier.lastTopicName;
 
@@ -60,11 +79,9 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
         _currentTitle = lastTopicName ?? lastQuery;
       } else {
         _currentTitle = 'Global Research Publications';
-        if (currentState.value == null || currentState.value!.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            notifier.fetchTrend();
-          });
-        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          notifier.fetchTrend(saveHistory: true);
+        });
       }
     }
   }
@@ -77,7 +94,6 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
 
   void _handleSearch(String keyword, {String? topicId, String? topicName}) {
     final query = keyword.trim();
-
     final isGlobal = query.isEmpty && topicId == null;
 
     setState(() {
@@ -98,6 +114,7 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
           keyword: isGlobal ? null : (topicId == null ? query : null),
           topicId: topicId,
           topicName: topicName,
+          saveHistory: !_isIsolatedMode,
         );
   }
 
@@ -355,6 +372,45 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
                                 averageYoY: avgYoY,
                                 nextYear: lastYear + 1,
                               ),
+
+                              const SizedBox(height: 32),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    final keywordToPass = isGlobal
+                                        ? '__ALL__'
+                                        : _currentTitle;
+                                    context.push(
+                                      '${AppRoutes.dashboard}/${Uri.encodeComponent(keywordToPass)}',
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    CupertinoIcons.square_grid_2x2_fill,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    'View Full Research Dashboard',
+                                    style: AppTextStyles.button.copyWith(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.3,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.brandBlue900,
+                                    foregroundColor: Colors.white,
+                                    elevation:
+                                        0, // Bỏ bóng đổ để giữ thiết kế phẳng, hiện đại
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                             ],
                           ),
                         );

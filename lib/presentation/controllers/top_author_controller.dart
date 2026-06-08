@@ -16,7 +16,7 @@ class TopAuthorsController extends AsyncNotifier<List<AuthorEntity>> {
   }
 
   Future<void> fetchTopAuthors(String keyword, {int limit = 10}) async {
-    if (keyword.trim().isEmpty) return;
+    // if (keyword.trim().isEmpty) return;
 
     state = const AsyncValue.loading();
 

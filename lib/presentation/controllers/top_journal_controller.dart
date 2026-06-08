@@ -17,7 +17,7 @@ class TopJournalsController extends AsyncNotifier<List<JournalEntity>> {
   }
 
   Future<void> fetchTopJournals(String keyword, {int limit = 10}) async {
-    if (keyword.trim().isEmpty) return;
+    // if (keyword.trim().isEmpty) return;
 
     state = const AsyncValue.loading();
 
