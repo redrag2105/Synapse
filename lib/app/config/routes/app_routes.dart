@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/presentation/screens/home/home_screen.dart';
 import 'package:synapse/presentation/screens/publication_detail/publication_detail_screen.dart';
-import 'package:synapse/presentation/screens/search/publication_search_screen.dart';
+import 'package:synapse/presentation/screens/publication_search/publication_search_screen.dart';
 import 'package:synapse/presentation/screens/research_dashboard/research_dashboard_screen.dart';
 import 'package:synapse/presentation/screens/trend/trend_screen.dart';
 

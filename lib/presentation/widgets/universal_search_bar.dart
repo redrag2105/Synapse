@@ -93,14 +93,38 @@ class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
           onFocusChange: (hasFocus) {
             setState(() => _isFocused = hasFocus);
             widget.onFocusChanged?.call(hasFocus);
-            if (!hasFocus) {
-              if (controller.text.trim().isEmpty) {
-                if (_isSubmittingEmpty) {
-                  _isSubmittingEmpty = false;
-                } else if (widget.initialValue.isNotEmpty) {
-                  controller.text = widget.initialValue;
-                }
+
+            if (hasFocus) {
+              if (controller.text.isNotEmpty) {
+                final currentText = controller.text;
+
+                controller.value = TextEditingValue(
+                  text: '$currentText ',
+                  selection: TextSelection.collapsed(
+                    offset: currentText.length + 1,
+                  ),
+                );
+
+                controller.value = TextEditingValue(
+                  text: currentText,
+                  selection: TextSelection.collapsed(
+                    offset: currentText.length,
+                  ),
+                );
               }
+            } else {
+              Future.delayed(const Duration(milliseconds: 150), () {
+                if (mounted) {
+                  if (controller.text.trim().isEmpty && _isSubmittingEmpty) {
+                    _isSubmittingEmpty = false;
+                    return;
+                  }
+
+                  if (controller.text != widget.initialValue) {
+                    controller.text = widget.initialValue;
+                  }
+                }
+              });
             }
           },
           child: ValueListenableBuilder<TextEditingValue>(

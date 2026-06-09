@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -6,10 +7,10 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/presentation/controllers/publication_search_controller.dart';
 import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
-import 'package:synapse/presentation/screens/search/widgets/publication_card.dart';
-import 'package:synapse/presentation/screens/search/widgets/publication_card_skeleton.dart';
-import 'package:synapse/presentation/screens/search/widgets/search_empty_state.dart';
-import 'package:synapse/presentation/screens/search/widgets/smart_trend_button.dart';
+import 'package:synapse/presentation/screens/publication_search/widgets/publication_card.dart';
+import 'package:synapse/presentation/screens/publication_search/widgets/publication_card_skeleton.dart';
+import 'package:synapse/presentation/screens/publication_search/widgets/search_empty_state.dart';
+import 'package:synapse/presentation/screens/publication_search/widgets/smart_trend_button.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
 
 class PublicationSearchScreen extends ConsumerStatefulWidget {
@@ -22,9 +23,16 @@ class PublicationSearchScreen extends ConsumerStatefulWidget {
 
 class _PublicationSearchScreenState
     extends ConsumerState<PublicationSearchScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   bool _isFocused = false;
   late final AnimationController _focusAnimController;
+
+  final ScrollController _scrollController = ScrollController();
+
+  final ValueNotifier<bool> _isButtonExpanded = ValueNotifier(true);
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -33,17 +41,36 @@ class _PublicationSearchScreenState
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.userScrollDirection ==
+        ScrollDirection.reverse) {
+      if (_isButtonExpanded.value) _isButtonExpanded.value = false;
+    } else if (_scrollController.position.userScrollDirection ==
+        ScrollDirection.forward) {
+      if (!_isButtonExpanded.value) _isButtonExpanded.value = true;
+    }
+
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(publicationSearchControllerProvider.notifier).loadMore();
+    }
   }
 
   @override
   void dispose() {
     _focusAnimController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _isButtonExpanded.dispose();
     super.dispose();
   }
 
   void _onFocusChanged(bool hasFocus) {
     _isFocused = hasFocus;
-
     if (hasFocus) {
       _focusAnimController.forward();
     } else {
@@ -53,12 +80,13 @@ class _PublicationSearchScreenState
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final searchState = ref.watch(publicationSearchControllerProvider);
+    final controller = ref.read(publicationSearchControllerProvider.notifier);
+
     final topPadding = MediaQuery.paddingOf(context).top;
-    final lastQuery = ref
-        .watch(publicationSearchControllerProvider.notifier)
-        .lastQuery;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final lastQuery = controller.lastQuery;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -69,6 +97,7 @@ class _PublicationSearchScreenState
         child: Stack(
           children: [
             CustomScrollView(
+              controller: _scrollController,
               physics: const BouncingScrollPhysics(),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               slivers: [
@@ -77,6 +106,7 @@ class _PublicationSearchScreenState
                   builder: (context, child) {
                     return SliverPersistentHeader(
                       pinned: true,
+                      floating: true,
                       delegate: UniversalHeaderDelegate(
                         restoreOnEmptySubmit: true,
                         topPadding: topPadding,
@@ -171,14 +201,52 @@ class _PublicationSearchScreenState
                           );
                         }
 
+                        final hasReachedMax = controller.hasReachedMax;
+                        final itemCount =
+                            publications.length + (hasReachedMax ? 0 : 1);
+
                         return ListView.builder(
                           key: const ValueKey('data_list'),
                           padding: const EdgeInsets.only(top: 16, bottom: 40),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: publications.length,
-                          itemBuilder: (context, index) =>
-                              PublicationCard(publication: publications[index]),
+                          itemCount: itemCount,
+                          itemBuilder: (context, index) {
+                            if (index == publications.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.0),
+                                child: Center(
+                                  child: SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3.6,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return TweenAnimationBuilder<double>(
+                              key: ValueKey(publications[index].id),
+                              duration: const Duration(milliseconds: 1000),
+                              curve: Curves.easeOutCubic,
+                              tween: Tween<double>(begin: 0.0, end: 1.0),
+                              builder: (context, value, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, 30 * (1 - value)),
+                                  child: Opacity(
+                                    opacity: value.clamp(0.0, 1.0),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: PublicationCard(
+                                publication: publications[index],
+                                isLastItem: index == publications.length - 1,
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -217,22 +285,32 @@ class _PublicationSearchScreenState
             AnimatedPositioned(
               duration: const Duration(milliseconds: 500),
               curve: Curves.easeOutBack,
-              // Tự động thụt xuống ẩn đi nếu đang gõ phím, đang tải hoặc keyword rỗng
               bottom: (_isFocused || lastQuery.isEmpty || searchState.isLoading)
                   ? -100
-                  : bottomPadding + 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: SmartTrendButton(
-                  keyword: lastQuery,
-                  onTap: () {
-                    ref
-                        .read(publicationTrendControllerProvider.notifier)
-                        .setExternalNavigation(lastQuery, lastQuery);
-                    context.push(AppRoutes.trend);
-                  },
-                ),
+                  : bottomPadding,
+              left: 16,
+              right: 16,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _isButtonExpanded,
+                builder: (context, isExpanded, child) {
+                  return AnimatedAlign(
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutCubic,
+                    alignment: isExpanded
+                        ? Alignment.bottomCenter
+                        : Alignment.bottomRight,
+                    child: SmartTrendButton(
+                      keyword: lastQuery,
+                      isExpanded: isExpanded,
+                      onTap: () {
+                        ref
+                            .read(publicationTrendControllerProvider.notifier)
+                            .setExternalNavigation(lastQuery, lastQuery);
+                        context.push(AppRoutes.trend);
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ],

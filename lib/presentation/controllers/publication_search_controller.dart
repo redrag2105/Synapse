@@ -7,6 +7,18 @@ import 'package:synapse/domain/entities/publication_entity.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
 
+class SearchCacheData {
+  final List<PublicationEntity> publications;
+  final int page;
+  final bool hasReachedMax;
+
+  SearchCacheData({
+    required this.publications,
+    required this.page,
+    required this.hasReachedMax,
+  });
+}
+
 final publicationSearchControllerProvider =
     AsyncNotifierProvider.autoDispose<
       PublicationSearchController,
@@ -15,7 +27,7 @@ final publicationSearchControllerProvider =
 
 class PublicationSearchController
     extends AsyncNotifier<List<PublicationEntity>> {
-  final Map<String, List<PublicationEntity>> _cache = {};
+  final Map<String, SearchCacheData> _cache = {};
 
   KeepAliveLink? _link;
   Timer? _timer;
@@ -23,6 +35,15 @@ class PublicationSearchController
   int _currentRequestId = 0;
 
   String lastQuery = '';
+
+  int _currentPage = 1;
+  bool _hasReachedMax = false;
+  bool _isFetchingNext = false;
+
+  bool get hasReachedMax => _hasReachedMax;
+
+  TopicEntity? _lastTopic;
+  bool _isSearchByTopic = false;
 
   @override
   FutureOr<List<PublicationEntity>> build() {
@@ -53,29 +74,37 @@ class PublicationSearchController
 
     if (normalizedKeyword.isEmpty) {
       lastQuery = '';
+      _isSearchByTopic = false;
       state = const AsyncValue.data([]);
       return;
     }
 
     lastQuery = keyword;
+    _isSearchByTopic = false;
     _keepAliveTemporarily();
 
     final requestId = ++_currentRequestId;
 
     if (_cache.containsKey(normalizedKeyword)) {
       AppLogger.i('⚡ Lấy kết quả từ Cache cho từ khóa: "$keyword" (0ms)');
-      state = AsyncValue.data(_cache[normalizedKeyword]!);
+      final cachedData = _cache[normalizedKeyword]!;
+      _currentPage = cachedData.page;
+      _hasReachedMax = cachedData.hasReachedMax;
+      state = AsyncValue.data(cachedData.publications);
       return;
     }
 
     AppLogger.i('🔍 Không có Cache. Bắt đầu tải API cho: "$keyword"');
-    final stopwatch = Stopwatch()..start();
 
+    _currentPage = 1;
+    _hasReachedMax = false;
     state = const AsyncValue.loading();
+
+    final stopwatch = Stopwatch()..start();
 
     final useCase = ref.read(searchPublicationsUseCaseProvider);
     final result = await useCase(
-      SearchPublicationsParams(keyword: normalizedKeyword),
+      SearchPublicationsParams(keyword: normalizedKeyword, page: _currentPage),
     );
 
     result.fold(
@@ -94,14 +123,20 @@ class PublicationSearchController
           '🎉 Tìm thấy ${publications.length} bài báo trong ${stopwatch.elapsedMilliseconds}ms',
         );
 
-        _cache[normalizedKeyword] = publications;
-
         if (requestId != _currentRequestId) {
           AppLogger.d(
             '🚫 Đã hủy update giao diện cho "$keyword" do có truy vấn mới hơn.',
           );
           return;
         }
+
+        _hasReachedMax = publications.length < 25;
+
+        _cache[normalizedKeyword] = SearchCacheData(
+          publications: publications,
+          page: _currentPage,
+          hasReachedMax: _hasReachedMax,
+        );
 
         state = AsyncValue.data(publications);
       },
@@ -112,24 +147,34 @@ class PublicationSearchController
     final topicId = topic.id.split('/').last;
 
     lastQuery = topic.displayName;
-
+    _lastTopic = topic;
+    _isSearchByTopic = true;
     _keepAliveTemporarily();
 
     final requestId = ++_currentRequestId;
 
     if (_cache.containsKey(topicId)) {
       AppLogger.i('⚡ Lấy từ Cache cho Topic ID: $topicId (0ms)');
-      state = AsyncValue.data(_cache[topicId]!);
+      final cachedData = _cache[topicId]!;
+      _currentPage = cachedData.page;
+      _hasReachedMax = cachedData.hasReachedMax;
+      state = AsyncValue.data(cachedData.publications);
       return;
     }
 
     AppLogger.i('🚀 Bỏ qua quét từ khóa! Tìm thẳng bài báo cho ID: $topicId');
-    final stopwatch = Stopwatch()..start();
 
+    _currentPage = 1;
+    _hasReachedMax = false;
     state = const AsyncValue.loading();
 
+    final stopwatch = Stopwatch()..start();
+
     final pubRepo = ref.read(publicationRepositoryProvider);
-    final result = await pubRepo.getPublicationsByTopicId(topicId);
+    final result = await pubRepo.getPublicationsByTopicId(
+      topicId,
+      page: _currentPage,
+    );
 
     result.fold(
       (failure) {
@@ -143,8 +188,6 @@ class PublicationSearchController
           '🎉 Tìm thành công ${publications.length} bài báo trong ${stopwatch.elapsedMilliseconds}ms',
         );
 
-        _cache[topicId] = publications;
-
         if (requestId != _currentRequestId) {
           AppLogger.d(
             '🚫 Đã hủy update giao diện cho Topic "$topicId" do có truy vấn mới hơn.',
@@ -152,8 +195,89 @@ class PublicationSearchController
           return;
         }
 
+        _hasReachedMax = publications.length < 25;
+
+        _cache[topicId] = SearchCacheData(
+          publications: publications,
+          page: _currentPage,
+          hasReachedMax: _hasReachedMax,
+        );
+
         state = AsyncValue.data(publications);
       },
     );
+  }
+
+  Future<void> loadMore() async {
+    if (_isFetchingNext || _hasReachedMax || state.value == null) return;
+
+    _isFetchingNext = true;
+    final nextPage = _currentPage + 1;
+    final requestId = _currentRequestId;
+
+    AppLogger.i('🔄 Đang tải thêm trang $nextPage...');
+
+    if (_isSearchByTopic && _lastTopic != null) {
+      final topicId = _lastTopic!.id.split('/').last;
+      final pubRepo = ref.read(publicationRepositoryProvider);
+
+      final result = await pubRepo.getPublicationsByTopicId(
+        topicId,
+        page: nextPage,
+      );
+
+      result.fold(
+        (failure) => AppLogger.w(
+          '⚠️ Lỗi khi tải thêm trang $nextPage: ${failure.message}',
+        ),
+        (newPubs) {
+          if (requestId != _currentRequestId) return;
+
+          _hasReachedMax = newPubs.length < 25;
+          _currentPage = nextPage;
+
+          final updatedList = [...state.value!, ...newPubs];
+          _cache[topicId] = SearchCacheData(
+            publications: updatedList,
+            page: _currentPage,
+            hasReachedMax: _hasReachedMax,
+          );
+
+          state = AsyncValue.data(updatedList);
+          AppLogger.i('✅ Đã tải và nối thêm ${newPubs.length} bài báo');
+        },
+      );
+    } else {
+      final normalizedKeyword = lastQuery.trim().toLowerCase();
+      final useCase = ref.read(searchPublicationsUseCaseProvider);
+
+      final result = await useCase(
+        SearchPublicationsParams(keyword: normalizedKeyword, page: nextPage),
+      );
+
+      result.fold(
+        (failure) => AppLogger.w(
+          '⚠️ Lỗi khi tải thêm trang $nextPage: ${failure.message}',
+        ),
+        (newPubs) {
+          if (requestId != _currentRequestId) return;
+
+          _hasReachedMax = newPubs.length < 25;
+          _currentPage = nextPage;
+
+          final updatedList = [...state.value!, ...newPubs];
+          _cache[normalizedKeyword] = SearchCacheData(
+            publications: updatedList,
+            page: _currentPage,
+            hasReachedMax: _hasReachedMax,
+          );
+
+          state = AsyncValue.data(updatedList);
+          AppLogger.i('✅ Đã tải và nối thêm ${newPubs.length} bài báo');
+        },
+      );
+    }
+
+    _isFetchingNext = false;
   }
 }
