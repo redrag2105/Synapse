@@ -8,6 +8,7 @@ class MetricCard extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final Color color;
+  final Color? subtitleColor;
 
   const MetricCard({
     super.key,
@@ -16,6 +17,7 @@ class MetricCard extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.color,
+    this.subtitleColor,
   });
 
   @override
@@ -40,15 +42,19 @@ class MetricCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: AppTextStyles.metadata.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.metadata.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
@@ -59,20 +65,26 @@ class MetricCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.h1.copyWith(
               fontSize: 22,
               color: AppColors.textPrimary,
-            ), // Giảm size chữ để đỡ dính
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.metadata.copyWith(
               fontSize: 12,
-              color: AppColors.textLight,
+              color: subtitleColor ?? AppColors.textLight,
+              fontWeight: subtitleColor != null ? FontWeight.w600 : null,
+              height: 1.3,
             ),
           ),
         ],

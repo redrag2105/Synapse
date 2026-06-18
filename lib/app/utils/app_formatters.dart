@@ -86,4 +86,9 @@ class AppFormatters {
     if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
     return number.toInt().toString();
   }
+
+  /// Bỏ phần mô tả trong ngoặc đơn khỏi tên tạp chí.
+  static String stripParenthetical(String name) {
+    return name.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
+  }
 }

@@ -8,6 +8,7 @@ class AuthorEntity {
   final int i10Index;
   final String? lastKnownInstitutionName;
   final String? lastKnownInstitutionCountry;
+  final List<AuthorResearchTopic> researchTopics;
 
   const AuthorEntity({
     required this.id,
@@ -19,5 +20,18 @@ class AuthorEntity {
     this.i10Index = 0,
     this.lastKnownInstitutionName,
     this.lastKnownInstitutionCountry,
+    this.researchTopics = const [],
+  });
+}
+
+class AuthorResearchTopic {
+  final String id;
+  final String displayName;
+  final int count;
+
+  const AuthorResearchTopic({
+    required this.id,
+    required this.displayName,
+    required this.count,
   });
 }

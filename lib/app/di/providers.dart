@@ -10,15 +10,21 @@ import 'package:synapse/domain/repositories/topic_repository.dart';
 import 'package:synapse/domain/repositories/publication_repository.dart';
 import 'package:synapse/domain/repositories/author_repository.dart';
 import 'package:synapse/domain/repositories/journal_repository.dart';
+import 'package:synapse/domain/repositories/leading_journal_repository.dart';
 
 // --- REPOSITORIES (DATA IMPL) IMPORTS ---
 import 'package:synapse/data/repositories/topic_repository_impl.dart';
 import 'package:synapse/data/repositories/publication_repository_impl.dart';
 import 'package:synapse/data/repositories/author_repository_impl.dart';
 import 'package:synapse/data/repositories/journal_repository_impl.dart';
+import 'package:synapse/data/repositories/leading_journal_repository_impl.dart';
+import 'package:synapse/domain/usecases/author/get_author_topic_matrix_usecase.dart';
+import 'package:synapse/domain/usecases/author/get_author_works_usecase.dart';
+import 'package:synapse/domain/usecases/author/get_global_author_insights_usecase.dart';
 import 'package:synapse/domain/usecases/author/get_top_authors_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_by_id_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_trend_usecase.dart';
+import 'package:synapse/domain/usecases/journal/get_leading_journals_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_trending_topics_usecase.dart';
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
@@ -57,11 +63,18 @@ final publicationRepositoryProvider = Provider<PublicationRepository>((ref) {
 });
 
 final authorRepositoryProvider = Provider<AuthorRepository>((ref) {
-  return AuthorRepositoryImpl(ref.watch(apiAuthorProvider));
+  return AuthorRepositoryImpl(
+    ref.watch(apiAuthorProvider),
+    ref.watch(apiPublicationProvider),
+  );
 });
 
 final journalRepositoryProvider = Provider<JournalRepository>((ref) {
   return JournalRepositoryImpl(ref.watch(apiJournalProvider));
+});
+
+final leadingJournalRepositoryProvider = Provider<LeadingJournalRepository>((ref) {
+  return LeadingJournalRepositoryImpl(ref.watch(apiJournalProvider));
 });
 
 // =========================================================================
@@ -87,16 +100,40 @@ final getPublicationTrendUseCaseProvider = Provider<GetPublicationTrendUseCase>(
 );
 
 final getTopAuthorsUseCaseProvider = Provider<GetTopAuthorsUseCase>((ref) {
-  return GetTopAuthorsUseCase(
-    ref.watch(topicRepositoryProvider),
-    ref.watch(authorRepositoryProvider),
-  );
+  return GetTopAuthorsUseCase(ref.watch(authorRepositoryProvider));
 });
+
+final getAuthorProfileUseCaseProvider = Provider<GetAuthorProfileUseCase>((ref) {
+  return GetAuthorProfileUseCase(ref.watch(authorRepositoryProvider));
+});
+
+final getAuthorWorksUseCaseProvider = Provider<GetAuthorWorksUseCase>((ref) {
+  return GetAuthorWorksUseCase(ref.watch(authorRepositoryProvider));
+});
+
+final getAuthorTopicMatrixUseCaseProvider =
+    Provider<GetAuthorTopicMatrixUseCase>((ref) {
+      return GetAuthorTopicMatrixUseCase(ref.watch(authorRepositoryProvider));
+    });
+
+final getGlobalAuthorInsightsUseCaseProvider =
+    Provider<GetGlobalAuthorInsightsUseCase>((ref) {
+      return GetGlobalAuthorInsightsUseCase(
+        ref.watch(authorRepositoryProvider),
+      );
+    });
 
 final getTopJournalsUseCaseProvider = Provider<GetTopJournalsUseCase>((ref) {
   return GetTopJournalsUseCase(
     ref.watch(topicRepositoryProvider),
     ref.watch(journalRepositoryProvider),
+  );
+});
+
+final getLeadingJournalsUseCaseProvider =
+    Provider<GetLeadingJournalsUseCase>((ref) {
+  return GetLeadingJournalsUseCase(
+    ref.watch(leadingJournalRepositoryProvider),
   );
 });
 

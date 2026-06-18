@@ -6,6 +6,9 @@ import 'package:synapse/presentation/screens/publication_detail/publication_deta
 import 'package:synapse/presentation/screens/search/publication_search_screen.dart';
 import 'package:synapse/presentation/screens/research_dashboard/research_dashboard_screen.dart';
 import 'package:synapse/presentation/screens/trend/trend_screen.dart';
+import 'package:synapse/presentation/screens/top_authors/top_authors_screen.dart';
+import 'package:synapse/presentation/screens/author_detail/author_detail_screen.dart';
+import 'package:synapse/presentation/screens/leading_journals/leading_journals_screen.dart';
 
 class AppRoutes {
   static const String home = '/';
@@ -50,13 +53,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.topAuthors,
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Top Authors'),
+        builder: (context, state) => const TopAuthorsScreen(),
+        routes: [
+          GoRoute(
+            path: ':authorId',
+            builder: (context, state) {
+              final authorId = state.pathParameters['authorId'] ?? '';
+              final topic = state.uri.queryParameters['topic'] ?? '';
+              return AuthorDetailScreen(authorId: authorId, topic: topic);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.topJournals,
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Top Journals'),
+        builder: (context, state) => const LeadingJournalsScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
@@ -66,34 +77,3 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
-
-// =======================================================
-// MÀN HÌNH TẠM THỜI (Sẽ xóa đi khi ta thiết kế UI thật)
-// =======================================================
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Đây là màn hình: $title',
-              style: const TextStyle(fontSize: 20),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => context.go(AppRoutes.search),
-              child: const Text('Đi tới màn hình Tìm kiếm'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

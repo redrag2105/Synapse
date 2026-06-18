@@ -13,6 +13,7 @@ abstract class ApiPublication {
     String? groupBy,
     int page = 1,
     int perPage = 25,
+    String? cursor,
     String? select,
   });
 }
@@ -46,24 +47,35 @@ class ApiPublicationImpl implements ApiPublication {
     String? groupBy,
     int page = 1,
     int perPage = 25,
+    String? cursor,
     String? select,
   }) async {
-    final safePerPage = perPage > 100 ? 100 : perPage;
+    final usesGroupBy = groupBy != null && groupBy.isNotEmpty;
+    final safePerPage = usesGroupBy
+        ? (perPage > 200 ? 200 : perPage)
+        : (perPage > 100 ? 100 : perPage);
 
     final queryParams = <String, dynamic>{
-      'page': page,
       'per_page': safePerPage,
     };
+
+    if (usesGroupBy) {
+      // OpenAlex group_by: only page 1 (max 200 groups). Cursor returns wrong order.
+      queryParams['page'] = 1;
+      queryParams['group_by'] = groupBy;
+    } else {
+      queryParams['page'] = page;
+    }
 
     if (search != null && search.isNotEmpty) queryParams['search'] = search;
     if (filter != null && filter.isNotEmpty) queryParams['filter'] = filter;
     if (sort != null && sort.isNotEmpty) queryParams['sort'] = sort;
-    if (groupBy != null && groupBy.isNotEmpty) {
-      queryParams['group_by'] = groupBy;
-    }
     if (select != null && select.isNotEmpty) queryParams['select'] = select;
 
-    final response = await _dio.get('/works', queryParameters: queryParams);
+    final response = await _dio.get(
+      '/works',
+      queryParameters: queryParams,
+    );
 
     return response.data;
   }
