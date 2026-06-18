@@ -62,12 +62,7 @@ class AuthorRepositoryImpl
 
           authors.sort((a, b) => b.worksCount.compareTo(a.worksCount));
 
-          return Right(
-            PagedResult(
-              items: authors,
-              hasMore: false,
-            ),
-          );
+          return Right(PagedResult(items: authors, hasMore: false));
         } catch (e) {
           return Left(ErrorHandler.handle(e));
         }
@@ -271,41 +266,45 @@ class AuthorRepositoryImpl
               'publication_year:${currentYear - 5}-${currentYear - 3}';
           final search = trimmed.isNotEmpty ? trimmed : null;
 
-          final orcidResponse = await _apiAuthor.getAuthors(
-            search: search,
-            filter: 'has_orcid:true',
-            perPage: 1,
-          );
-          final activeOrcids =
-              orcidResponse['meta']?['count'] as int? ?? 0;
+          final results = await Future.wait([
+            _apiAuthor.getAuthors(
+              search: search,
+              filter: 'has_orcid:true',
+              perPage: 1,
+            ),
+            _apiPublication.getWorks(
+              search: search,
+              filter: recentFilter,
+              perPage: 100,
+              select: 'id,authorships,cited_by_count',
+            ),
+            _apiPublication.getWorks(
+              search: search,
+              filter: previousFilter,
+              perPage: 100,
+              select: 'id,authorships,cited_by_count',
+            ),
+          ]);
 
-          final recentWorksResponse = await _apiPublication.getWorks(
-            search: search,
-            filter: recentFilter,
-            perPage: 100,
-            select: 'id,authorships,cited_by_count',
-          );
-          final previousWorksResponse = await _apiPublication.getWorks(
-            search: search,
-            filter: previousFilter,
-            perPage: 100,
-            select: 'id,authorships,cited_by_count',
-          );
+          final orcidResponse = results[0];
+          final recentWorksResponse = results[1];
+          final previousWorksResponse = results[2];
+
+          final activeOrcids = orcidResponse['meta']?['count'] as int? ?? 0;
 
           final recentWorks = recentWorksResponse['results'] as List? ?? [];
-          final previousWorks =
-              previousWorksResponse['results'] as List? ?? [];
+          final previousWorks = previousWorksResponse['results'] as List? ?? [];
 
           final recentDensity = _coAuthorshipDensity(recentWorks);
           final previousDensity = _coAuthorshipDensity(previousWorks);
 
           final recentImpact = _toImpactScore(_averageCitations(recentWorks));
-          final previousImpact =
-              _toImpactScore(_averageCitations(previousWorks));
+          final previousImpact = _toImpactScore(
+            _averageCitations(previousWorks),
+          );
 
           final recentIntl = _internationalCollaborationCount(recentWorks);
-          final previousIntl =
-              _internationalCollaborationCount(previousWorks);
+          final previousIntl = _internationalCollaborationCount(previousWorks);
 
           final intlTrend = previousIntl == 0
               ? 0.0

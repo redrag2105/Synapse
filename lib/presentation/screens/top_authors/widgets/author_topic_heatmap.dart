@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/domain/entities/author_topic_matrix_entity.dart';
@@ -9,8 +8,7 @@ class AuthorTopicHeatmap extends StatelessWidget {
 
   const AuthorTopicHeatmap({super.key, required this.matrix});
 
-  static final Color _lowColor =
-      AppColors.brandBlue900.withValues(alpha: 0.06);
+  static final Color _lowColor = AppColors.brandBlue900.withValues(alpha: 0.06);
   static const Color _highColor = AppColors.brandBlue700;
 
   String _lastName(String fullName) {
@@ -227,7 +225,7 @@ class AuthorTopicHeatmap extends StatelessWidget {
               final gridWidth = constraints.maxWidth - topicLabelWidth;
               final cellSize = authorCount > 0
                   ? ((gridWidth - cellGap * (authorCount - 1)) / authorCount)
-                      .clamp(30.0, 48.0)
+                        .clamp(30.0, 48.0)
                   : 40.0;
 
               return Column(
@@ -271,62 +269,61 @@ class AuthorTopicHeatmap extends StatelessWidget {
                               ),
                             ),
                           ),
-                          ...matrix.authorNames.asMap().entries.map(
-                            (authorEntry) {
-                              final authorIndex = authorEntry.key;
-                              final authorName =
-                                  matrix.authorNames[authorIndex];
-                              final count =
-                                  matrix.counts[authorIndex][topicIndex];
+                          ...matrix.authorNames.asMap().entries.map((
+                            authorEntry,
+                          ) {
+                            final authorIndex = authorEntry.key;
+                            final authorName = matrix.authorNames[authorIndex];
+                            final count =
+                                matrix.counts[authorIndex][topicIndex];
 
-                              return Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(6),
-                                  onTap: () => _showCellDetail(
-                                    context,
-                                    topicName: topicName,
-                                    authorName: authorName,
-                                    count: count,
+                            return Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(6),
+                                onTap: () => _showCellDetail(
+                                  context,
+                                  topicName: topicName,
+                                  authorName: authorName,
+                                  count: count,
+                                ),
+                                child: Container(
+                                  width: cellSize,
+                                  height: cellSize,
+                                  margin: EdgeInsets.only(
+                                    right: authorIndex < authorCount - 1
+                                        ? cellGap
+                                        : 0,
                                   ),
-                                  child: Container(
-                                    width: cellSize,
-                                    height: cellSize,
-                                    margin: EdgeInsets.only(
-                                      right: authorIndex < authorCount - 1
-                                          ? cellGap
-                                          : 0,
-                                    ),
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: _cellColor(count, maxCount),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: count > 0
-                                          ? Border.all(
-                                              color: AppColors.brandBlue900
-                                                  .withValues(alpha: 0.08),
-                                            )
-                                          : null,
-                                    ),
-                                    child: count > 0
-                                        ? Text(
-                                            '$count',
-                                            style: AppTextStyles.metadata
-                                                .copyWith(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: _cellTextColor(
-                                                count,
-                                                maxCount,
-                                              ),
-                                            ),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: _cellColor(count, maxCount),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: count > 0
+                                        ? Border.all(
+                                            color: AppColors.brandBlue900
+                                                .withValues(alpha: 0.08),
                                           )
                                         : null,
                                   ),
+                                  child: count > 0
+                                      ? Text(
+                                          '$count',
+                                          style: AppTextStyles.metadata
+                                              .copyWith(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: _cellTextColor(
+                                                  count,
+                                                  maxCount,
+                                                ),
+                                              ),
+                                        )
+                                      : null,
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          }),
                         ],
                       ),
                     );
@@ -394,9 +391,7 @@ class AuthorTopicHeatmap extends StatelessWidget {
                   height: 8,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(4),
-                    gradient: LinearGradient(
-                      colors: [_lowColor, _highColor],
-                    ),
+                    gradient: LinearGradient(colors: [_lowColor, _highColor]),
                   ),
                 ),
               ),

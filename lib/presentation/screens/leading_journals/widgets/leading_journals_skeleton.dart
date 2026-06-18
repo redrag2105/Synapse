@@ -24,7 +24,7 @@ class LeadingJournalsSkeleton extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.35,
+              childAspectRatio: 1.1,
               children: List.generate(4, (_) => _box(height: 105)),
             ),
             const SizedBox(height: 24),
@@ -36,21 +36,20 @@ class LeadingJournalsSkeleton extends StatelessWidget {
             const SizedBox(height: 24),
             _box(height: 20, width: 180, radius: 6),
             const SizedBox(height: 12),
-            ...List.generate(5, (_) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _box(height: 64, radius: 12),
-                )),
+            ...List.generate(
+              5,
+              (_) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _box(height: 64, radius: 12),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _box({
-    required double height,
-    double? width,
-    double radius = 16,
-  }) {
+  Widget _box({required double height, double? width, double radius = 16}) {
     return Container(
       height: height,
       width: width ?? double.infinity,

@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:synapse/app/di/providers.dart';
+import 'package:synapse/app/types/failure.dart';
 import 'package:synapse/app/types/paginated_list_state.dart';
 import 'package:synapse/domain/entities/author_entity.dart';
 import 'package:synapse/domain/entities/author_topic_matrix_entity.dart';
@@ -39,8 +40,9 @@ class TopAuthorsViewState {
     return TopAuthorsViewState(
       authors: authors ?? this.authors,
       topicMatrix: clearMatrix ? null : (topicMatrix ?? this.topicMatrix),
-      globalInsights:
-          clearInsights ? null : (globalInsights ?? this.globalInsights),
+      globalInsights: clearInsights
+          ? null
+          : (globalInsights ?? this.globalInsights),
       isLoadingMatrix: isLoadingMatrix ?? this.isLoadingMatrix,
       isLoadingInsights: isLoadingInsights ?? this.isLoadingInsights,
     );
@@ -49,8 +51,8 @@ class TopAuthorsViewState {
 
 final topAuthorsControllerProvider =
     AsyncNotifierProvider<TopAuthorsController, TopAuthorsViewState>(
-  TopAuthorsController.new,
-);
+      TopAuthorsController.new,
+    );
 
 class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
   static const int _pageSize = PaginatedListState.defaultPageSize;
@@ -60,7 +62,6 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
   String lastQuery = '';
   int _requestId = 0;
   int _matrixRequestId = 0;
-  int _insightsRequestId = 0;
   bool _isLoadingMoreInFlight = false;
 
   List<AuthorEntity> _authorBuffer = [];
@@ -98,11 +99,23 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
     String keyword, {
     bool saveHistory = true,
     int? limit,
+    bool forceRefresh = false,
   }) async {
     final trimmed = keyword.trim();
     final isGlobal = trimmed.isEmpty;
     final displayLimit = limit ?? _pageSize;
     final apiLimit = limit ?? _apiBatchSize;
+
+    // Tránh fetch lại liên tục nếu đang load hoặc đã có data của chính keyword này
+    if (!forceRefresh && _currentKeyword == trimmed) {
+      if (state.isLoading ||
+          (state.hasValue &&
+              (state.value!.authors.items.isNotEmpty ||
+                  state.value!.isLoadingMatrix ||
+                  state.value!.isLoadingInsights))) {
+        return;
+      }
+    }
 
     _currentKeyword = trimmed;
     _authorBuffer = [];
@@ -112,13 +125,19 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
     }
 
     final requestId = ++_requestId;
+
+    // Khởi chạy fetch Insights ngay lập tức song song với Authors để giảm thời gian chờ
+    Future<Either<Failure, GlobalAuthorInsights>>? insightsFuture;
+    if (limit == null) {
+      insightsFuture = ref.read(getGlobalAuthorInsightsUseCaseProvider)(
+        GetGlobalAuthorInsightsParams(keyword: _currentKeyword),
+      );
+    }
+
     state = const AsyncValue.loading();
 
     final result = await ref.read(getTopAuthorsUseCaseProvider)(
-      GetTopAuthorsParams(
-        keyword: _currentKeyword,
-        limit: apiLimit,
-      ),
+      GetTopAuthorsParams(keyword: _currentKeyword, limit: apiLimit),
     );
 
     if (requestId != _requestId) return;
@@ -130,6 +149,7 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
 
         final visible = _authorBuffer.take(displayLimit).toList();
 
+        // Khởi tạo state với dữ liệu Authors và bật sẵn cờ loading cho các phần phụ
         state = AsyncValue.data(
           TopAuthorsViewState(
             authors: TopAuthorsListState(
@@ -137,25 +157,40 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
               currentPage: 1,
               hasMore: limit == null && _hasMoreToShow(visible.length),
             ),
+            isLoadingInsights: limit == null,
+            isLoadingMatrix: limit == null && isGlobal && visible.isNotEmpty,
           ),
         );
 
         if (limit == null) {
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            unawaited(_loadSecondaryData(visible, isGlobal: isGlobal));
-          });
+          // 1. Xử lý kết quả Insights đã chạy song song ở trên
+          if (insightsFuture != null) {
+            insightsFuture.then((insightsResult) {
+              if (requestId != _requestId) return;
+              final latest = state.value;
+              if (latest == null) return;
+
+              insightsResult.fold(
+                (failure) => state = AsyncValue.data(
+                  latest.copyWith(isLoadingInsights: false),
+                ),
+                (insights) => state = AsyncValue.data(
+                  latest.copyWith(
+                    globalInsights: insights,
+                    isLoadingInsights: false,
+                  ),
+                ),
+              );
+            });
+          }
+
+          // 2. Bắt đầu fetch Matrix (bắt buộc phải đợi Authors vì cần ID)
+          if (isGlobal && visible.isNotEmpty) {
+            unawaited(_loadTopicMatrix(visible));
+          }
         }
       },
     );
-  }
-
-  Future<void> _loadSecondaryData(
-    List<AuthorEntity> authors, {
-    required bool isGlobal,
-  }) async {
-    await _loadGlobalInsights();
-    if (!isGlobal || authors.isEmpty) return;
-    await _loadTopicMatrix(authors);
   }
 
   Future<void> loadMore() async {
@@ -176,9 +211,7 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
     final displayedCount = authorsState.items.length;
 
     state = AsyncValue.data(
-      current.copyWith(
-        authors: authorsState.copyWith(isLoadingMore: true),
-      ),
+      current.copyWith(authors: authorsState.copyWith(isLoadingMore: true)),
     );
 
     try {
@@ -203,10 +236,7 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
 
       state = AsyncValue.data(
         current.copyWith(
-          authors: authorsState.copyWith(
-            hasMore: false,
-            isLoadingMore: false,
-          ),
+          authors: authorsState.copyWith(hasMore: false, isLoadingMore: false),
         ),
       );
     } finally {
@@ -216,12 +246,6 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
 
   Future<void> _loadTopicMatrix(List<AuthorEntity> authors) async {
     final requestId = ++_matrixRequestId;
-    final current = state.value;
-    if (current == null || authors.isEmpty) return;
-
-    state = AsyncValue.data(
-      current.copyWith(isLoadingMatrix: true, clearMatrix: true),
-    );
 
     final result = await ref.read(getAuthorTopicMatrixUseCaseProvider)(
       GetAuthorTopicMatrixParams(
@@ -235,42 +259,10 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
     if (latest == null) return;
 
     result.fold(
-      (failure) => state = AsyncValue.data(
-        latest.copyWith(isLoadingMatrix: false),
-      ),
+      (failure) =>
+          state = AsyncValue.data(latest.copyWith(isLoadingMatrix: false)),
       (matrix) => state = AsyncValue.data(
         latest.copyWith(topicMatrix: matrix, isLoadingMatrix: false),
-      ),
-    );
-  }
-
-  Future<void> _loadGlobalInsights() async {
-    final requestId = ++_insightsRequestId;
-    final current = state.value;
-    if (current == null) return;
-
-    state = AsyncValue.data(
-      current.copyWith(isLoadingInsights: true, clearInsights: true),
-    );
-
-    final result = await ref.read(getGlobalAuthorInsightsUseCaseProvider)(
-      GetGlobalAuthorInsightsParams(keyword: _currentKeyword),
-    );
-
-    if (requestId != _insightsRequestId) return;
-
-    final latest = state.value;
-    if (latest == null) return;
-
-    result.fold(
-      (failure) => state = AsyncValue.data(
-        latest.copyWith(isLoadingInsights: false),
-      ),
-      (insights) => state = AsyncValue.data(
-        latest.copyWith(
-          globalInsights: insights,
-          isLoadingInsights: false,
-        ),
       ),
     );
   }

@@ -18,7 +18,7 @@ class JournalSummarySection extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.35,
+      childAspectRatio: 1.1,
       children: [
         MetricCard(
           title: 'Active Journals',
@@ -29,8 +29,12 @@ class JournalSummarySection extends StatelessWidget {
         ),
         MetricCard(
           title: 'Most Prolific',
-          value: AppFormatters.compactNumber(insights.mostProlificCount.toDouble()),
-          subtitle: AppFormatters.stripParenthetical(insights.mostProlificJournal),
+          value: AppFormatters.compactNumber(
+            insights.mostProlificCount.toDouble(),
+          ),
+          subtitle: AppFormatters.stripParenthetical(
+            insights.mostProlificJournal,
+          ),
           icon: Icons.emoji_events,
           color: AppColors.brandBlue700,
         ),
