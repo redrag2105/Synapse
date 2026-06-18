@@ -123,8 +123,9 @@ class _ResearchDashboardScreenState
                 final primaryPaper = publications.first;
 
                 // 2. Lấy Tác giả và Tạp chí Top 1 từ State
-                final topAuthor = authorState.value?.isNotEmpty == true
-                    ? authorState.value!.first
+                final topAuthor = authorState.value?.authors.items.isNotEmpty ==
+                        true
+                    ? authorState.value!.authors.items.first
                     : null;
                 final topJournal = journalState.value?.isNotEmpty == true
                     ? journalState.value!.first
