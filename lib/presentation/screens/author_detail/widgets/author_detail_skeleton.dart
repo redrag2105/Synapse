@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:synapse/app/config/app_colors.dart';
-import 'package:synapse/presentation/screens/search/widgets/publication_card_skeleton.dart';
+import 'package:synapse/presentation/screens/publication_search/widgets/publication_card_skeleton.dart';
 
 class AuthorDetailSkeleton extends StatelessWidget {
   const AuthorDetailSkeleton({super.key});
@@ -23,12 +23,8 @@ class AuthorDetailSkeleton extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        const SliverToBoxAdapter(
-          child: _ProfileHeaderSkeleton(),
-        ),
-        const SliverToBoxAdapter(
-          child: _WorksSectionSkeleton(),
-        ),
+        const SliverToBoxAdapter(child: _ProfileHeaderSkeleton()),
+        const SliverToBoxAdapter(child: _WorksSectionSkeleton()),
       ],
     );
   }
@@ -42,9 +38,7 @@ class _ProfileHeaderSkeleton extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-      decoration: const BoxDecoration(
-        color: AppColors.brandBlue900,
-      ),
+      decoration: const BoxDecoration(color: AppColors.brandBlue900),
       child: Shimmer.fromColors(
         baseColor: Colors.white.withValues(alpha: 0.1),
         highlightColor: Colors.white.withValues(alpha: 0.25),

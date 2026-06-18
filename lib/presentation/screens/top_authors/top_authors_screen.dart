@@ -28,6 +28,7 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
   late final ScrollController _scrollController;
   String _currentTitle = _globalTitle;
   bool _isPaging = false;
+  bool _isSearchBarFocused = false;
 
   @override
   void initState() {
@@ -76,6 +77,7 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
   }
 
   void _onFocusChanged(bool hasFocus) {
+    _isSearchBarFocused = hasFocus;
     if (hasFocus) {
       _focusAnimController.forward();
     } else {
@@ -89,19 +91,21 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
 
     setState(() {
       _currentTitle = isGlobal ? _globalTitle : query;
+      _isSearchBarFocused = false;
     });
 
     _focusAnimController.reverse();
     FocusManager.instance.primaryFocus?.unfocus();
 
-    ref.read(topAuthorsControllerProvider.notifier).fetchTopAuthors(
-          isGlobal ? '' : query,
-        );
+    ref
+        .read(topAuthorsControllerProvider.notifier)
+        .fetchTopAuthors(isGlobal ? '' : query);
   }
 
   void _openAuthorDetail(String authorId) {
-    final keyword =
-        ref.read(topAuthorsControllerProvider.notifier).currentKeyword;
+    final keyword = ref
+        .read(topAuthorsControllerProvider.notifier)
+        .currentKeyword;
     final encodedKeyword = Uri.encodeComponent(keyword);
     context.push('${AppRoutes.topAuthors}/$authorId?topic=$encodedKeyword');
   }
@@ -111,8 +115,9 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
     final viewState = ref.watch(topAuthorsControllerProvider);
     final topPadding = MediaQuery.paddingOf(context).top;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
-    final isGlobalView =
-        ref.read(topAuthorsControllerProvider.notifier).isGlobalView;
+    final isGlobalView = ref
+        .read(topAuthorsControllerProvider.notifier)
+        .isGlobalView;
 
     final isGlobal = _currentTitle == _globalTitle;
     final initialSearchQuery = isGlobal ? '' : _currentTitle;
@@ -123,109 +128,109 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
       body: SafeArea(
         top: false,
         bottom: true,
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          slivers: [
-            AnimatedBuilder(
-              animation: _focusAnimController,
-              builder: (context, child) {
-                return SliverPersistentHeader(
-                  pinned: true,
-                  delegate: UniversalHeaderDelegate(
-                    topPadding: topPadding,
-                    title: 'Top Authors & Researchers',
-                    subtitle: _currentTitle,
-                    searchBarInitialValue: initialSearchQuery,
-                    searchBarHintText: 'Search for a research topic...',
-                    focusProgress: _focusAnimController.value,
-                    onFocusChanged: _onFocusChanged,
-                    onSubmitted: _handleSearch,
-                    onTopicSelected: (topic) {
-                      _handleSearch(topic.displayName);
-                    },
-                  ),
-                );
-              },
-            ),
-            SliverToBoxAdapter(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 800),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                layoutBuilder:
-                    (Widget? currentChild, List<Widget> previousChildren) {
-                  return Stack(
-                    alignment: Alignment.topCenter,
-                    children: <Widget>[
-                      ...previousChildren,
-                      ?currentChild,
-                    ],
-                  );
-                },
-                child: viewState.when(
-                  loading: () => TopAuthorsSkeleton(
-                    key: const ValueKey('top_authors_loading'),
-                    showHeatmap: isGlobal,
-                  ),
-                  error: (error, _) => SizedBox(
-                    key: const ValueKey('top_authors_error'),
-                    height: 400,
-                    child: TopAuthorsErrorState(
-                      message: error.toString(),
-                      onRetry: () => _handleSearch(
-                        isGlobal ? '' : _currentTitle,
+        child: Stack(
+          children: [
+            CustomScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              slivers: [
+                AnimatedBuilder(
+                  animation: _focusAnimController,
+                  builder: (context, child) {
+                    return SliverPersistentHeader(
+                      pinned: true,
+                      delegate: UniversalHeaderDelegate(
+                        topPadding: topPadding,
+                        title: 'Top Authors & Researchers',
+                        subtitle: _currentTitle,
+                        searchBarInitialValue: initialSearchQuery,
+                        searchBarHintText: 'Search for a research topic...',
+                        focusProgress: _focusAnimController.value,
+                        onFocusChanged: _onFocusChanged,
+                        onSubmitted: _handleSearch,
+                        onTopicSelected: (topic) {
+                          _handleSearch(topic.displayName);
+                        },
+                      ),
+                    );
+                  },
+                ),
+
+                ...viewState.when(
+                  loading: () => [
+                    SliverToBoxAdapter(
+                      child: TopAuthorsSkeleton(
+                        key: const ValueKey('top_authors_loading'),
+                        showHeatmap: isGlobal,
                       ),
                     ),
-                  ),
+                  ],
+                  error: (error, _) => [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: TopAuthorsErrorState(
+                        message: error.toString(),
+                        onRetry: () =>
+                            _handleSearch(isGlobal ? '' : _currentTitle),
+                      ),
+                    ),
+                  ],
                   data: (data) {
                     final paginated = data.authors;
                     final authors = paginated.items;
 
                     if (authors.isEmpty) {
-                      return const SizedBox(
-                        key: ValueKey('top_authors_empty'),
-                        height: 400,
-                        child: TopAuthorsEmptyState(
-                          message:
-                              'Không tìm thấy tác giả nào cho chủ đề này.',
+                      return [
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: TopAuthorsEmptyState(
+                            message:
+                                'Không tìm thấy tác giả nào cho chủ đề này.',
+                          ),
                         ),
-                      );
+                      ];
                     }
 
-                    return Column(
-                      key: const ValueKey('top_authors_data'),
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        data.isLoadingInsights
-                            ? const GlobalAuthorInsightsSkeleton()
-                            : data.globalInsights != null
+                    return [
+                      // Phần thông tin tổng quan nằm trong Box Adapter
+                      SliverToBoxAdapter(
+                        key: const ValueKey('top_authors_data_header'),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            data.isLoadingInsights
+                                ? const GlobalAuthorInsightsSkeleton()
+                                : data.globalInsights != null
                                 ? GlobalAuthorInsightsRow(
                                     insights: data.globalInsights!,
                                   )
                                 : const SizedBox.shrink(),
-                        if (isGlobalView)
-                          data.isLoadingMatrix
-                              ? const AuthorTopicHeatmapSkeleton()
-                              : data.topicMatrix != null
+                            if (isGlobalView)
+                              data.isLoadingMatrix
+                                  ? const AuthorTopicHeatmapSkeleton()
+                                  : data.topicMatrix != null
                                   ? AuthorTopicHeatmap(
                                       matrix: data.topicMatrix!,
                                     )
                                   : const SizedBox.shrink(),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                          child: Text(
-                            isGlobal ? 'Global Leaderboard' : 'Leaderboard',
-                            style: AppTextStyles.h3.copyWith(
-                              fontSize: 16,
-                              color: AppColors.brandBlue900,
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 32, 16, 0),
+                              child: Text(
+                                isGlobal ? 'Global Leaderboard' : 'Leaderboard',
+                                style: AppTextStyles.h3.copyWith(
+                                  fontSize: 16,
+                                  color: AppColors.brandBlue900,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
+                      ),
+
+                      SliverPadding(
+                        padding: const EdgeInsets.only(top: 12),
+                        sliver: SliverList.builder(
                           itemCount: authors.length,
                           itemBuilder: (context, index) {
                             final author = authors[index];
@@ -236,16 +241,50 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
                             );
                           },
                         ),
-                        PaginationFooter(
-                          isLoading: paginated.isLoadingMore,
-                          hasMore: paginated.hasMore,
+                      ),
+
+                      SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            PaginationFooter(
+                              isLoading: paginated.isLoadingMore,
+                              hasMore: paginated.hasMore,
+                            ),
+                            SizedBox(height: bottomPadding),
+                          ],
                         ),
-                        SizedBox(height: bottomPadding),
-                      ],
-                    );
+                      ),
+                    ];
                   },
                 ),
-              ),
+              ],
+            ),
+
+            AnimatedBuilder(
+              animation: _focusAnimController,
+              builder: (context, child) {
+                final focusProgress = _focusAnimController.value;
+
+                if (!_isSearchBarFocused && focusProgress == 0.0) {
+                  return const SizedBox.shrink();
+                }
+
+                return Positioned(
+                  top: (topPadding + 160.0) - (95.0 * focusProgress),
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: GestureDetector(
+                    onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                    child: Opacity(
+                      opacity: focusProgress,
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),

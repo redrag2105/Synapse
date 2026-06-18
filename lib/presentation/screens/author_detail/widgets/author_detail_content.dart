@@ -5,7 +5,7 @@ import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/domain/entities/author_entity.dart';
 import 'package:synapse/domain/entities/publication_entity.dart';
-import 'package:synapse/presentation/screens/search/widgets/publication_card.dart';
+import 'package:synapse/presentation/screens/publication_search/widgets/publication_card.dart';
 import 'package:synapse/presentation/widgets/pagination_footer.dart';
 
 class AuthorProfileHeader extends StatelessWidget {
@@ -34,9 +34,7 @@ class AuthorProfileHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-      decoration: const BoxDecoration(
-        color: AppColors.brandBlue900,
-      ),
+      decoration: const BoxDecoration(color: AppColors.brandBlue900),
       child: Column(
         children: [
           CircleAvatar(
@@ -89,24 +87,13 @@ class AuthorProfileHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _StatItem(
-                label: 'H-INDEX',
-                value: '${profile.hIndex}',
-              ),
-              Container(
-                width: 0.5,
-                height: 36,
-                color: Colors.white24,
-              ),
+              _StatItem(label: 'H-INDEX', value: '${profile.hIndex}'),
+              Container(width: 0.5, height: 36, color: Colors.white24),
               _StatItem(
                 label: 'CITATIONS',
                 value: AppFormatters.formatNumber(profile.citedByCount),
               ),
-              Container(
-                width: 0.5,
-                height: 36,
-                color: Colors.white24,
-              ),
+              Container(width: 0.5, height: 36, color: Colors.white24),
               _StatItem(
                 label: 'WORKS',
                 value: AppFormatters.formatNumber(profile.worksCount),

@@ -90,45 +90,52 @@ class SmartTrendButton extends StatelessWidget {
                         curve: Curves.easeOutCubic,
                         alignment: Alignment.centerRight,
                         child: isExpanded
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(width: 12),
-                                  Flexible(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'RESEARCH TREND',
-                                          style: AppTextStyles.metadata
-                                              .copyWith(
-                                                color: AppColors.textSecondary,
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 1.2,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Analyze "$keyword"',
-                                          style: AppTextStyles.button.copyWith(
-                                            color: AppColors.brandBlue900,
+                            ? ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: maxWidth - 70,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(width: 12),
+                                    Flexible(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'RESEARCH TREND',
+                                            style: AppTextStyles.metadata
+                                                .copyWith(
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 1.2,
+                                                ),
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Analyze "$keyword"',
+                                            style: AppTextStyles.button
+                                                .copyWith(
+                                                  color: AppColors.brandBlue900,
+                                                ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  const Icon(
-                                    CupertinoIcons.arrow_right_circle_fill,
-                                    color: AppColors.brandBlue900,
-                                    size: 32,
-                                  ),
-                                ],
+                                    const SizedBox(width: 16),
+                                    const Icon(
+                                      CupertinoIcons.arrow_right_circle_fill,
+                                      color: AppColors.brandBlue900,
+                                      size: 32,
+                                    ),
+                                  ],
+                                ),
                               )
                             : const SizedBox.shrink(),
                       ),

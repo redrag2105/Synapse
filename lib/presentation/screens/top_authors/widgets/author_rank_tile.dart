@@ -57,7 +57,11 @@ class AuthorRankTile extends StatelessWidget {
                 child: Text(
                   '$rank',
                   style: AppTextStyles.h3.copyWith(
-                    fontSize: 16,
+                    fontSize: rank > 3
+                        ? rank >= 100
+                              ? 12
+                              : 14
+                        : 18,
                     fontWeight: FontWeight.bold,
                     color: rankColor ?? AppColors.textLight,
                   ),

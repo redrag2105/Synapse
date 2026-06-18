@@ -137,79 +137,61 @@ class _PublicationSearchScreenState
                   },
                 ),
 
-                SliverToBoxAdapter(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 800),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    layoutBuilder:
-                        (Widget? currentChild, List<Widget> previousChildren) {
-                          return Stack(
-                            alignment: Alignment.topCenter,
-                            children: <Widget>[
-                              ...previousChildren,
-                              ?currentChild,
-                            ],
-                          );
-                        },
-                    child: searchState.when(
-                      loading: () => ListView.builder(
-                        key: const ValueKey('loading_skeleton'),
-                        padding: const EdgeInsets.only(top: 16, bottom: 40),
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
+                ...searchState.when(
+                  loading: () => [
+                    SliverPadding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 40),
+                      sliver: SliverList.builder(
                         itemCount: 5,
                         itemBuilder: (context, index) =>
                             const PublicationCardSkeleton(),
                       ),
+                    ),
+                  ],
 
-                      error: (error, stack) => ConstrainedBox(
-                        key: const ValueKey('error_state'),
-                        constraints: BoxConstraints(
-                          minHeight: MediaQuery.sizeOf(context).height * 0.5,
+                  error: (error, stack) => [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(child: Text('Lỗi: ${error.toString()}')),
+                    ),
+                  ],
+
+                  data: (publications) {
+                    if (publications.isEmpty) {
+                      return [
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: lastQuery.isEmpty
+                                ? const SearchEmptyState(
+                                    key: ValueKey('initial_state'),
+                                    isInitialState: true,
+                                    icon: CupertinoIcons.book,
+                                    title: 'Discover the Unknown',
+                                    subtitle:
+                                        'Search across millions of scholarly works, authors, and topics to start your research.',
+                                  )
+                                : SearchEmptyState(
+                                    key: const ValueKey('no_results_state'),
+                                    isInitialState: false,
+                                    icon: CupertinoIcons.search,
+                                    title: 'No results found',
+                                    subtitle:
+                                        'We couldn\'t find anything matching "$lastQuery".\nTry checking your spelling or use broader terms.',
+                                  ),
+                          ),
                         ),
-                        child: Center(child: Text('Lỗi: ${error.toString()}')),
-                      ),
+                      ];
+                    }
 
-                      data: (publications) {
-                        if (publications.isEmpty) {
-                          return ConstrainedBox(
-                            key: const ValueKey('empty_state'),
-                            constraints: BoxConstraints(
-                              minHeight:
-                                  MediaQuery.sizeOf(context).height * 0.6,
-                            ),
-                            child: Center(
-                              child: lastQuery.isEmpty
-                                  ? const SearchEmptyState(
-                                      key: ValueKey('initial_state'),
-                                      isInitialState: true,
-                                      icon: CupertinoIcons.book,
-                                      title: 'Discover the Unknown',
-                                      subtitle:
-                                          'Search across millions of scholarly works, authors, and topics to start your research.',
-                                    )
-                                  : SearchEmptyState(
-                                      key: const ValueKey('no_results_state'),
-                                      isInitialState: false,
-                                      icon: CupertinoIcons.search,
-                                      title: 'No results found',
-                                      subtitle:
-                                          'We couldn\'t find anything matching "$lastQuery".\nTry checking your spelling or use broader terms.',
-                                    ),
-                            ),
-                          );
-                        }
+                    final hasReachedMax = controller.hasReachedMax;
+                    final itemCount =
+                        publications.length + (hasReachedMax ? 0 : 1);
 
-                        final hasReachedMax = controller.hasReachedMax;
-                        final itemCount =
-                            publications.length + (hasReachedMax ? 0 : 1);
-
-                        return ListView.builder(
-                          key: const ValueKey('data_list'),
-                          padding: const EdgeInsets.only(top: 16, bottom: 40),
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
+                    return [
+                      SliverPadding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 40),
+                        sliver: SliverList.builder(
                           itemCount: itemCount,
                           itemBuilder: (context, index) {
                             if (index == publications.length) {
@@ -247,10 +229,10 @@ class _PublicationSearchScreenState
                               ),
                             );
                           },
-                        );
-                      },
-                    ),
-                  ),
+                        ),
+                      ),
+                    ];
+                  },
                 ),
               ],
             ),
