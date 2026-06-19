@@ -1,42 +1,34 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:synapse/app/core/usecases/param_usecase.dart';
 import 'package:synapse/app/types/failure.dart';
+import 'package:synapse/app/types/paged_result.dart';
+import 'package:synapse/app/types/paginated_list_state.dart';
 import 'package:synapse/domain/entities/author_entity.dart';
 import 'package:synapse/domain/repositories/author_repository.dart';
-import 'package:synapse/domain/repositories/topic_repository.dart';
 
 class GetTopAuthorsParams {
   final String keyword;
   final int limit;
-  GetTopAuthorsParams({required this.keyword, this.limit = 10});
+
+  GetTopAuthorsParams({
+    required this.keyword,
+    this.limit = PaginatedListState.defaultPageSize,
+  });
 }
 
 class GetTopAuthorsUseCase
-    implements ParamUseCase<List<AuthorEntity>, GetTopAuthorsParams> {
-  final TopicRepository _topicRepository;
+    implements ParamUseCase<PagedResult<AuthorEntity>, GetTopAuthorsParams> {
   final AuthorRepository _authorRepository;
 
-  GetTopAuthorsUseCase(this._topicRepository, this._authorRepository);
+  GetTopAuthorsUseCase(this._authorRepository);
 
   @override
-  Future<Either<Failure, List<AuthorEntity>>> call(
+  Future<Either<Failure, PagedResult<AuthorEntity>>> call(
     GetTopAuthorsParams params,
   ) async {
-    final topicResult = await _topicRepository.searchTopics(
+    return _authorRepository.getTopAuthorsByKeyword(
       params.keyword,
-      limit: 1,
+      limit: params.limit,
     );
-
-    return topicResult.fold((failure) async => Left(failure), (topics) async {
-      if (topics.isEmpty) {
-        return const Left(NotFoundFailure('Không tìm thấy chủ đề.'));
-      }
-
-      final topicId = topics.first.id.split('/').last;
-      return await _authorRepository.getTopAuthorsByTopicId(
-        topicId,
-        limit: params.limit,
-      );
-    });
   }
 }
