@@ -5,11 +5,16 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/di/providers.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
+import 'package:synapse/app/utils/app_logger.dart';
 
 import 'package:synapse/domain/entities/publication_entity.dart';
+import 'package:synapse/domain/entities/author_entity.dart';
+import 'package:synapse/domain/entities/journal_entity.dart';
+import 'package:synapse/domain/usecases/author/get_top_authors_usecase.dart';
+import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
+
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
-import 'package:synapse/presentation/controllers/top_author_controller.dart';
-import 'package:synapse/presentation/controllers/top_journal_controller.dart';
+import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
 
 final dashboardPublicationsProvider = FutureProvider.autoDispose
     .family<List<PublicationEntity>, String>((ref, keyword) async {
@@ -18,6 +23,31 @@ final dashboardPublicationsProvider = FutureProvider.autoDispose
       return result.fold(
         (failure) => throw failure,
         (publications) => publications,
+      );
+    });
+
+final dashboardTopAuthorProvider = FutureProvider.autoDispose
+    .family<AuthorEntity?, String>((ref, keyword) async {
+      final useCase = ref.read(getTopAuthorsUseCaseProvider);
+      final result = await useCase(
+        GetTopAuthorsParams(keyword: keyword, limit: 1),
+      );
+      return result.fold(
+        (failure) => null,
+        (pagedResult) =>
+            pagedResult.items.isNotEmpty ? pagedResult.items.first : null,
+      );
+    });
+
+final dashboardTopJournalProvider = FutureProvider.autoDispose
+    .family<JournalEntity?, String>((ref, keyword) async {
+      final useCase = ref.read(getTopJournalsUseCaseProvider);
+      final result = await useCase(
+        GetTopJournalsParams(keyword: keyword, limit: 1),
+      );
+      return result.fold(
+        (failure) => null,
+        (journals) => journals.isNotEmpty ? journals.first : null,
       );
     });
 
@@ -53,11 +83,8 @@ class _ResearchDashboardScreenState
   void _fetchData() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
-          .read(topAuthorsControllerProvider.notifier)
-          .fetchTopAuthors(_actualKeyword, limit: 1);
-      ref
-          .read(topJournalsControllerProvider.notifier)
-          .fetchTopJournals(_actualKeyword, limit: 1);
+          .read(publicationTrendControllerProvider.notifier)
+          .fetchTrend(keyword: _actualKeyword, saveHistory: false);
     });
   }
 
@@ -66,8 +93,10 @@ class _ResearchDashboardScreenState
     final dashboardPubsState = ref.watch(
       dashboardPublicationsProvider(_actualKeyword),
     );
-    final authorState = ref.watch(topAuthorsControllerProvider);
-    final journalState = ref.watch(topJournalsControllerProvider);
+    final authorState = ref.watch(dashboardTopAuthorProvider(_actualKeyword));
+    final journalState = ref.watch(dashboardTopJournalProvider(_actualKeyword));
+
+    final trendState = ref.watch(publicationTrendControllerProvider);
 
     final bool isLoading =
         dashboardPubsState.isLoading ||
@@ -109,26 +138,34 @@ class _ResearchDashboardScreenState
                   );
                 }
 
-                // 1. Tính toán các chỉ số Tổng quan
-                final totalPapers = publications.length;
+                final trueTotalVolume =
+                    trendState.value?.values.fold<int>(
+                      0,
+                      (sum, count) => sum + count,
+                    ) ??
+                    0;
+                AppLogger.d('Calculated true total volume: $trueTotalVolume');
+                final top25Count = publications.length;
+
+                final totalVolumeStr =
+                    (trendState.isLoading && trueTotalVolume == 0)
+                    ? '...'
+                    : AppFormatters.formatNumber(
+                        trueTotalVolume > 0 ? trueTotalVolume : top25Count,
+                      );
+
                 final totalCitations = publications.fold<int>(
                   0,
                   (sum, p) => sum + p.citationCount,
                 );
-                final avgCitations = totalPapers > 0
-                    ? (totalCitations / totalPapers).toStringAsFixed(1)
+                final avgCitations = top25Count > 0
+                    ? (totalCitations / top25Count).toStringAsFixed(1)
                     : '0';
 
-                // Bài báo có ảnh hưởng nhất (Do danh sách đã được sắp xếp theo số trích dẫn từ trước)
                 final primaryPaper = publications.first;
 
-                // 2. Lấy Tác giả và Tạp chí Top 1 từ State
-                final topAuthor = authorState.value?.isNotEmpty == true
-                    ? authorState.value!.first
-                    : null;
-                final topJournal = journalState.value?.isNotEmpty == true
-                    ? journalState.value!.first
-                    : null;
+                final topAuthor = authorState.value;
+                final topJournal = journalState.value;
 
                 return ListView(
                   padding: const EdgeInsets.symmetric(
@@ -137,14 +174,13 @@ class _ResearchDashboardScreenState
                   ),
                   physics: const BouncingScrollPhysics(),
                   children: [
-                    // PHẦN THỐNG KÊ TỔNG QUAN (Vibe Springer Nature: Tối giản, tập trung vào Typography)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: _buildEditorialMetricCard(
                             label: 'TOTAL VOLUME',
-                            value: AppFormatters.formatNumber(totalPapers),
+                            value: totalVolumeStr,
                             unit: 'scholarly works',
                           ),
                         ),
@@ -156,7 +192,7 @@ class _ResearchDashboardScreenState
                         const SizedBox(width: 24),
                         Expanded(
                           child: _buildEditorialMetricCard(
-                            label: 'AVG CITATION IMPACT',
+                            label: 'TOP 25 IMPACT',
                             value: avgCitations,
                             unit: 'citations per paper',
                           ),
@@ -173,7 +209,6 @@ class _ResearchDashboardScreenState
                       ),
                     ),
 
-                    // PHẦN CHI TIẾT THỰC THỂ DẪN ĐẦU (LEADERSHIP DISCOVERY)
                     Text(
                       'RESEARCH LEADERSHIP',
                       style: AppTextStyles.h3.copyWith(
@@ -211,7 +246,6 @@ class _ResearchDashboardScreenState
                       ),
                     ),
 
-                    // PHẦN BÀI BÁO CÓ ẢNH HƯỞNG NHẤT (MOST INFLUENTIAL WORK)
                     Text(
                       'MOST INFLUENTIAL WORK',
                       style: AppTextStyles.h3.copyWith(
@@ -270,12 +304,13 @@ class _ResearchDashboardScreenState
     );
   }
 
-  // Widget hiển thị metric tối giản tinh tế theo phong cách báo in khoa học
   Widget _buildEditorialMetricCard({
     required String label,
     required String value,
     required String unit,
   }) {
+    final double dynamicFontSize = value.length > 8 ? 28.0 : 32.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -291,7 +326,7 @@ class _ResearchDashboardScreenState
         Text(
           value,
           style: AppTextStyles.h1.copyWith(
-            fontSize: 32,
+            fontSize: dynamicFontSize,
             fontWeight: FontWeight.w300,
             color: AppColors.brandBlue900,
             fontFamily: 'Merriweather',
@@ -309,7 +344,6 @@ class _ResearchDashboardScreenState
     );
   }
 
-  // Hàng thông tin thực thể dẫn đầu tinh gọn
   Widget _buildIntelligenceRow({
     required IconData icon,
     required String title,

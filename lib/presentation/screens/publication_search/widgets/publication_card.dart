@@ -8,8 +8,13 @@ import 'package:synapse/domain/entities/publication_entity.dart';
 
 class PublicationCard extends StatelessWidget {
   final PublicationEntity publication;
+  final bool isLastItem;
 
-  const PublicationCard({super.key, required this.publication});
+  const PublicationCard({
+    super.key,
+    required this.publication,
+    this.isLastItem = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,12 +27,13 @@ class PublicationCard extends StatelessWidget {
     );
 
     return Container(
-      // Border dưới phân cách các bài báo theo chuẩn danh sách
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
-        border: Border(
-          bottom: BorderSide(color: AppColors.borderGray, width: 1),
-        ),
+        border: isLastItem
+            ? null
+            : const Border(
+                bottom: BorderSide(color: AppColors.borderGray, width: 1),
+              ),
       ),
       child: InkWell(
         onTap: () {
@@ -39,7 +45,6 @@ class PublicationCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Meta: Type & Open Access
               Wrap(
                 spacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
@@ -73,7 +78,6 @@ class PublicationCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // 2. Title (Màu xanh brandBlue900)
               Text(
                 publication.title,
                 style: AppTextStyles.h2.copyWith(
@@ -83,7 +87,6 @@ class PublicationCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // 3. Authors (Gạch chân)
               Text(
                 publication.authors
                         .take(3)
@@ -92,19 +95,16 @@ class PublicationCard extends StatelessWidget {
                     (publication.authors.length > 3 ? '...' : ''),
                 style: AppTextStyles.metadata.copyWith(
                   color: AppColors.textPrimary,
-                  decoration: TextDecoration.underline,
                 ),
               ),
               const SizedBox(height: 8),
 
-              // 4. Journal & Date
               Text(
                 '${publication.journalName} ($displayDate)',
                 style: AppTextStyles.metadata,
               ),
               const SizedBox(height: 16),
 
-              // 5. Metrics
               Row(
                 children: [
                   const Icon(

@@ -19,7 +19,7 @@ mixin RequestDeduplicator {
       AppLogger.i(
         '⚡ Trùng lặp request [$cacheKey]. Đang gộp chung (Deduplication)...',
       );
-      return await _inFlight[cacheKey] as Future<Either<Failure, T>>;
+      return (await _inFlight[cacheKey]) as Either<Failure, T>;
     }
 
     final futureRequest = action();
