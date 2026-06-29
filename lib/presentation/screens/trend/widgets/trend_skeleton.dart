@@ -6,14 +6,12 @@ class TrendSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
-
     return Padding(
-      padding: EdgeInsets.only(
+      padding: const EdgeInsets.only(
         top: 20,
         left: 16,
         right: 16,
-        bottom: bottomPadding + 40,
+        bottom: 16,
       ),
       child: Shimmer.fromColors(
         baseColor: Colors.grey.shade300,

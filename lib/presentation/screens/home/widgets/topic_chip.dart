@@ -21,7 +21,7 @@ class TopicChip extends ConsumerWidget {
             .read(publicationSearchControllerProvider.notifier)
             .searchByTopicId(topic);
 
-        context.push(AppRoutes.search);
+        context.go(AppRoutes.search);
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(

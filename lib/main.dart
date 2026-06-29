@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 
 void main() async {
@@ -30,6 +31,7 @@ class SynapseApp extends ConsumerWidget {
           seedColor: const Color(0xFF2E65F3),
           brightness: Brightness.light,
         ),
+        scaffoldBackgroundColor: AppColors.surfaceGray,
         useMaterial3: true,
       ),
       routerConfig: router,

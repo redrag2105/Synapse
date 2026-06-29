@@ -16,6 +16,8 @@ import 'package:synapse/presentation/screens/trend/widgets/trend_skeleton.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_small_stat_box.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_forecast_card.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
+import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
+import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
 
 class TrendScreen extends ConsumerStatefulWidget {
   final String? topicId;
@@ -135,13 +137,8 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
     final isGlobal = _currentTitle == 'Global Research Publications';
     final initialSearchQuery = isGlobal ? '' : _currentTitle;
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceGray,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        top: false,
-        bottom: true,
-        child: Stack(
+    return TabScreenScaffold(
+      body: Stack(
           children: [
             CustomScrollView(
               physics: const BouncingScrollPhysics(),
@@ -153,6 +150,7 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
                     return SliverPersistentHeader(
                       pinned: true,
                       delegate: UniversalHeaderDelegate(
+                        showBackButton: false,
                         topPadding: topPadding,
                         title: 'Trend Analysis',
                         subtitle: _currentTitle,
@@ -383,7 +381,7 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
                                         ? '__ALL__'
                                         : _currentTitle;
                                     context.push(
-                                      '${AppRoutes.dashboard}/${Uri.encodeComponent(keywordToPass)}',
+                                      AppRoutes.keywordDetail(keywordToPass),
                                     );
                                   },
                                   icon: const Icon(
@@ -418,6 +416,7 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
                     ),
                   ),
                 ),
+                const SliverToBoxAdapter(child: TabBarContentPadding()),
               ],
             ),
 
@@ -449,7 +448,6 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
             ),
           ],
         ),
-      ),
     );
   }
 }

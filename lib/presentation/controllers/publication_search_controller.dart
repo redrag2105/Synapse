@@ -210,6 +210,7 @@ class PublicationSearchController
 
   Future<void> loadMore() async {
     if (_isFetchingNext || _hasReachedMax || state.value == null) return;
+    if (lastQuery.trim().isEmpty || state.value!.isEmpty) return;
 
     _isFetchingNext = true;
     final nextPage = _currentPage + 1;

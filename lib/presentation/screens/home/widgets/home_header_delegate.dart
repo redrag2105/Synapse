@@ -4,8 +4,12 @@ import 'package:synapse/app/config/app_text_styles.dart';
 
 class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double topPadding;
+  final VoidCallback? onProfileTap;
 
-  HomeHeaderDelegate({required this.topPadding});
+  HomeHeaderDelegate({
+    required this.topPadding,
+    this.onProfileTap,
+  });
 
   @override
   double get maxExtent => topPadding + 220.0;
@@ -14,8 +18,10 @@ class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => topPadding + 60.0;
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      true;
+  bool shouldRebuild(covariant HomeHeaderDelegate oldDelegate) {
+    return oldDelegate.topPadding != topPadding ||
+        oldDelegate.onProfileTap != onProfileTap;
+  }
 
   @override
   Widget build(
@@ -27,6 +33,7 @@ class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double progress = (shrinkOffset / extentDiff).clamp(0.0, 1.0);
 
     final double fadeOpacity = (1.0 - (progress * 2.5)).clamp(0.0, 1.0);
+    final double collapsedOpacity = (1.0 - fadeOpacity).clamp(0.0, 1.0);
 
     final double maxTitleSize = 40.0;
     final double minTitleSize = 20.0;
@@ -46,7 +53,8 @@ class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
           colors: [AppColors.brandBlue900, AppColors.brandBlue700],
         ),
       ),
-      child: Stack(
+      child: RepaintBoundary(
+        child: Stack(
         children: [
           Positioned(
             top: topPadding + 16,
@@ -64,24 +72,31 @@ class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                       fontFamily: 'Courier',
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white54),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'OPEN ACCESS',
-                      style: AppTextStyles.metadata.copyWith(
-                        color: Colors.white70,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                  if (onProfileTap != null)
+                    IgnorePointer(
+                      ignoring: fadeOpacity < 0.5,
+                      child: GestureDetector(
+                        onTap: onProfileTap,
+                        child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white54),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'My Profile',
+                              style: AppTextStyles.metadata.copyWith(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -123,7 +138,28 @@ class HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
           ),
+          if (onProfileTap != null)
+            Positioned(
+              top: topPadding + 8,
+              right: 8,
+              child: Opacity(
+                opacity: collapsedOpacity,
+                child: IgnorePointer(
+                  ignoring: collapsedOpacity < 0.5,
+                  child: IconButton(
+                    tooltip: 'My Profile',
+                    icon: const Icon(
+                      Icons.person_outline_rounded,
+                      color: Colors.white70,
+                      size: 24,
+                    ),
+                    onPressed: onProfileTap,
+                  ),
+                ),
+              ),
+            ),
         ],
+        ),
       ),
     );
   }

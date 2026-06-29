@@ -12,6 +12,8 @@ import 'package:synapse/presentation/screens/publication_search/widgets/publicat
 import 'package:synapse/presentation/screens/publication_search/widgets/search_empty_state.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/smart_trend_button.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
+import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
+import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
 
 class PublicationSearchScreen extends ConsumerStatefulWidget {
   const PublicationSearchScreen({super.key});
@@ -56,7 +58,14 @@ class _PublicationSearchScreenState
 
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      ref.read(publicationSearchControllerProvider.notifier).loadMore();
+      final controller = ref.read(publicationSearchControllerProvider.notifier);
+      final searchState = ref.read(publicationSearchControllerProvider);
+
+      if (controller.lastQuery.isNotEmpty &&
+          searchState.hasValue &&
+          searchState.requireValue.isNotEmpty) {
+        controller.loadMore();
+      }
     }
   }
 
@@ -85,15 +94,11 @@ class _PublicationSearchScreenState
     final controller = ref.read(publicationSearchControllerProvider.notifier);
 
     final topPadding = MediaQuery.paddingOf(context).top;
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final lastQuery = controller.lastQuery;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        top: false,
-        bottom: true,
+    return TabScreenScaffold(
+      body: ColoredBox(
+        color: AppColors.background,
         child: Stack(
           children: [
             CustomScrollView(
@@ -108,6 +113,7 @@ class _PublicationSearchScreenState
                       pinned: true,
                       floating: true,
                       delegate: UniversalHeaderDelegate(
+                        showBackButton: false,
                         restoreOnEmptySubmit: true,
                         topPadding: topPadding,
                         title: 'Search Publications',
@@ -209,24 +215,10 @@ class _PublicationSearchScreenState
                               );
                             }
 
-                            return TweenAnimationBuilder<double>(
+                            return PublicationCard(
                               key: ValueKey(publications[index].id),
-                              duration: const Duration(milliseconds: 1000),
-                              curve: Curves.easeOutCubic,
-                              tween: Tween<double>(begin: 0.0, end: 1.0),
-                              builder: (context, value, child) {
-                                return Transform.translate(
-                                  offset: Offset(0, 30 * (1 - value)),
-                                  child: Opacity(
-                                    opacity: value.clamp(0.0, 1.0),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: PublicationCard(
-                                publication: publications[index],
-                                isLastItem: index == publications.length - 1,
-                              ),
+                              publication: publications[index],
+                              isLastItem: index == publications.length - 1,
                             );
                           },
                         ),
@@ -234,6 +226,7 @@ class _PublicationSearchScreenState
                     ];
                   },
                 ),
+                const SliverToBoxAdapter(child: TabBarContentPadding()),
               ],
             ),
 
@@ -269,7 +262,10 @@ class _PublicationSearchScreenState
               curve: Curves.easeOutBack,
               bottom: (_isFocused || lastQuery.isEmpty || searchState.isLoading)
                   ? -100
-                  : bottomPadding,
+                  : AppBottomNavLayout.maxOverlayInset(
+                        MediaQuery.paddingOf(context).bottom,
+                      ) +
+                      8,
               left: 16,
               right: 16,
               child: ValueListenableBuilder<bool>(
@@ -288,7 +284,7 @@ class _PublicationSearchScreenState
                         ref
                             .read(publicationTrendControllerProvider.notifier)
                             .setExternalNavigation(lastQuery, lastQuery);
-                        context.push(AppRoutes.trend);
+                        context.go(AppRoutes.trend);
                       },
                     ),
                   );

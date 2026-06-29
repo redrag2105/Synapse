@@ -17,6 +17,7 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
   final ValueChanged<bool> onFocusChanged;
   final Function(String) onSubmitted;
   final Function(dynamic) onTopicSelected;
+  final bool showBackButton;
 
   UniversalHeaderDelegate({
     required this.topPadding,
@@ -26,6 +27,7 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
     this.searchBarHintText = 'Search for topics...',
     this.searchBarInitialValue = '',
     this.restoreOnEmptySubmit = false,
+    this.showBackButton = true,
     required this.onFocusChanged,
     required this.onSubmitted,
     required this.onTopicSelected,
@@ -48,7 +50,8 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
         oldDelegate.subtitle != subtitle ||
         oldDelegate.topPadding != topPadding ||
         oldDelegate.focusProgress != focusProgress ||
-        oldDelegate.searchBarInitialValue != searchBarInitialValue;
+        oldDelegate.searchBarInitialValue != searchBarInitialValue ||
+        oldDelegate.showBackButton != showBackButton;
   }
 
   @override
@@ -96,7 +99,9 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double searchBarTop =
         unfocusedTop + ((focusedTop - unfocusedTop) * focusProgress);
 
-    final double searchBarLeft = 16.0 + (40.0 * focusProgress);
+    final double searchBarLeft = showBackButton
+        ? 16.0 + (40.0 * focusProgress)
+        : 16.0;
 
     return Container(
       decoration: const BoxDecoration(
@@ -110,18 +115,19 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
         fit: StackFit.expand,
         clipBehavior: Clip.hardEdge,
         children: [
-          Positioned(
-            top: topPadding + 8.0,
-            left: 8,
-            child: IconButton(
-              icon: const Icon(CupertinoIcons.back, color: Colors.white),
-              onPressed: () => context.pop(),
+          if (showBackButton)
+            Positioned(
+              top: topPadding + 8.0,
+              left: 8,
+              child: IconButton(
+                icon: const Icon(CupertinoIcons.back, color: Colors.white),
+                onPressed: () => context.pop(),
+              ),
             ),
-          ),
 
           Positioned(
             top: currentTitleY,
-            left: 56,
+            left: showBackButton ? 56 : 16,
             child: Opacity(
               opacity: titleOpacity,
               child: Transform.scale(
@@ -140,7 +146,7 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
 
           Positioned(
             top: currentSubY,
-            left: 56,
+            left: showBackButton ? 56 : 16,
             right: 16,
             child: Opacity(
               opacity: titleOpacity,

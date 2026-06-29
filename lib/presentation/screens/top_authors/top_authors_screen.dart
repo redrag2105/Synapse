@@ -12,6 +12,8 @@ import 'package:synapse/presentation/screens/top_authors/widgets/top_authors_emp
 import 'package:synapse/presentation/screens/top_authors/widgets/top_authors_skeleton.dart';
 import 'package:synapse/presentation/widgets/pagination_footer.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
+import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
+import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
 
 class TopAuthorsScreen extends ConsumerStatefulWidget {
   const TopAuthorsScreen({super.key});
@@ -114,7 +116,6 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
   Widget build(BuildContext context) {
     final viewState = ref.watch(topAuthorsControllerProvider);
     final topPadding = MediaQuery.paddingOf(context).top;
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
     final isGlobalView = ref
         .read(topAuthorsControllerProvider.notifier)
         .isGlobalView;
@@ -122,13 +123,8 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
     final isGlobal = _currentTitle == _globalTitle;
     final initialSearchQuery = isGlobal ? '' : _currentTitle;
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceGray,
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        top: false,
-        bottom: true,
-        child: Stack(
+    return TabScreenScaffold(
+      body: Stack(
           children: [
             CustomScrollView(
               controller: _scrollController,
@@ -141,6 +137,7 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
                     return SliverPersistentHeader(
                       pinned: true,
                       delegate: UniversalHeaderDelegate(
+                        showBackButton: false,
                         topPadding: topPadding,
                         title: 'Top Authors & Researchers',
                         subtitle: _currentTitle,
@@ -244,16 +241,12 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
                       ),
 
                       SliverToBoxAdapter(
-                        child: Column(
-                          children: [
-                            PaginationFooter(
-                              isLoading: paginated.isLoadingMore,
-                              hasMore: paginated.hasMore,
-                            ),
-                            SizedBox(height: bottomPadding),
-                          ],
+                        child: PaginationFooter(
+                          isLoading: paginated.isLoadingMore,
+                          hasMore: paginated.hasMore,
                         ),
                       ),
+                      const SliverToBoxAdapter(child: TabBarContentPadding()),
                     ];
                   },
                 ),
@@ -288,7 +281,6 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
             ),
           ],
         ),
-      ),
     );
   }
 }

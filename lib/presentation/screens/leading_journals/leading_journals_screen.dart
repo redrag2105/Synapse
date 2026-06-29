@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/domain/entities/leading_journal_entity.dart';
@@ -10,6 +9,9 @@ import 'package:synapse/presentation/screens/leading_journals/widgets/journal_qu
 import 'package:synapse/presentation/screens/leading_journals/widgets/journal_summary_section.dart';
 import 'package:synapse/presentation/screens/leading_journals/widgets/journal_top_bar_chart.dart';
 import 'package:synapse/presentation/screens/leading_journals/widgets/leading_journals_skeleton.dart';
+import 'package:synapse/presentation/widgets/tab_screen_header_delegate.dart';
+import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
+import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
 
 class LeadingJournalsScreen extends ConsumerWidget {
   const LeadingJournalsScreen({super.key});
@@ -17,59 +19,61 @@ class LeadingJournalsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(leadingJournalsControllerProvider);
+    final topPadding = MediaQuery.paddingOf(context).top;
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceGray,
-      appBar: AppBar(
-        title: Text(
-          'Leading Journals',
-          style: AppTextStyles.h3.copyWith(color: Colors.white),
+    return TabScreenScaffold(
+      body: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: TabScreenHeaderDelegate(
+                topPadding: topPadding,
+                title: 'Leading Journals',
+                subtitle: 'Top sources by citation impact',
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 800),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: state.when(
+                  loading: () => const LeadingJournalsSkeleton(
+                    key: ValueKey('leading_journals_loading'),
+                  ),
+                  error: (error, _) =>
+                      _buildErrorState(context, ref, error),
+                  data: (overview) => _buildContent(
+                    key: const ValueKey('leading_journals_data'),
+                    overview: overview,
+                  ),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: TabBarContentPadding()),
+          ],
         ),
-        backgroundColor: AppColors.brandBlue900,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 800),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: state.when(
-          loading: () => const LeadingJournalsSkeleton(
-            key: ValueKey('leading_journals_loading'),
-          ),
-          error: (error, _) => _buildErrorState(context, ref, error),
-          data: (overview) => _buildContent(
-            key: const ValueKey('leading_journals_data'),
-            overview: overview,
-          ),
-        ),
-      ),
     );
   }
 
   Widget _buildErrorState(BuildContext context, WidgetRef ref, Object error) {
-    return Center(
+    return Padding(
       key: const ValueKey('leading_journals_error'),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 48),
-            const SizedBox(height: 16),
-            Text('Lỗi: $error', textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () =>
-                  ref.read(leadingJournalsControllerProvider.notifier).reload(),
-              child: const Text('Thử lại'),
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+          const SizedBox(height: 16),
+          Text('Lỗi: $error', textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () =>
+                ref.read(leadingJournalsControllerProvider.notifier).reload(),
+            child: const Text('Thử lại'),
+          ),
+        ],
       ),
     );
   }
@@ -78,9 +82,8 @@ class LeadingJournalsScreen extends ConsumerWidget {
     required Key key,
     required LeadingJournalsOverview overview,
   }) {
-    return SingleChildScrollView(
+    return Padding(
       key: key,
-      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,7 +103,6 @@ class LeadingJournalsScreen extends ConsumerWidget {
           _buildSectionTitle('Detailed Leaderboard'),
           const SizedBox(height: 12),
           JournalLeaderboard(journals: overview.journals),
-          const SizedBox(height: 24),
         ],
       ),
     );
