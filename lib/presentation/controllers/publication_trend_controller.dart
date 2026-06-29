@@ -22,14 +22,6 @@ class PublicationTrendController extends AsyncNotifier<Map<int, int>> {
   String? lastTopicId;
   String? lastTopicName;
 
-  String? pendingExternalKeyword;
-  String? pendingExternalTopicName;
-
-  void setExternalNavigation(String keyword, String topicName) {
-    pendingExternalKeyword = keyword;
-    pendingExternalTopicName = topicName;
-  }
-
   @override
   FutureOr<Map<int, int>> build() {
     _keepAliveTemporarily();

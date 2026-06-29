@@ -4,11 +4,15 @@ import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/domain/entities/leading_journal_entity.dart';
 import 'package:synapse/presentation/screens/trend/widgets/metric_card.dart';
 
-/// Section A — 2×2 summary metrics derived from mock journal data.
 class JournalSummarySection extends StatelessWidget {
   final LeadingJournalInsights insights;
+  final String activeJournalsSubtitle;
 
-  const JournalSummarySection({super.key, required this.insights});
+  const JournalSummarySection({
+    super.key,
+    required this.insights,
+    this.activeJournalsSubtitle = 'tracked in dataset',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +27,7 @@ class JournalSummarySection extends StatelessWidget {
         MetricCard(
           title: 'Active Journals',
           value: '${insights.activeJournals}',
-          subtitle: 'tracked in dataset',
+          subtitle: activeJournalsSubtitle,
           icon: Icons.library_books,
           color: AppColors.brandBlue900,
         ),

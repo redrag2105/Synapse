@@ -1,7 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:synapse/app/core/usecases/param_usecase.dart';
 import 'package:synapse/app/types/failure.dart';
-import 'package:synapse/domain/entities/journal_entity.dart';
+import 'package:synapse/domain/entities/top_journals_page.dart';
 import 'package:synapse/domain/repositories/journal_repository.dart';
 import 'package:synapse/domain/repositories/topic_repository.dart';
 
@@ -12,14 +12,14 @@ class GetTopJournalsParams {
 }
 
 class GetTopJournalsUseCase
-    implements ParamUseCase<List<JournalEntity>, GetTopJournalsParams> {
+    implements ParamUseCase<TopJournalsPage, GetTopJournalsParams> {
   final TopicRepository _topicRepository;
   final JournalRepository _journalRepository;
 
   GetTopJournalsUseCase(this._topicRepository, this._journalRepository);
 
   @override
-  Future<Either<Failure, List<JournalEntity>>> call(
+  Future<Either<Failure, TopJournalsPage>> call(
     GetTopJournalsParams params,
   ) async {
     if (params.keyword.isEmpty) {

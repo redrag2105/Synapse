@@ -39,8 +39,7 @@ class DiscoverScreen extends ConsumerWidget {
       data: (list) => list.length,
       orElse: () => 0,
     );
-    final statsLoading =
-        frequentState.isLoading && !frequentState.hasValue;
+    final statsLoading = frequentState.isLoading && !frequentState.hasValue;
 
     void onKeywordTap(KeywordEntity keyword) {
       openKeywordInSearch(context, ref, keyword);
@@ -107,14 +106,23 @@ class DiscoverScreen extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             sliver: SliverToBoxAdapter(
-              child: frequentState.when(
-                loading: () => const KeywordFrequencySkeleton(),
-                error: (_, _) => _SectionError(
-                  message: 'Unable to load frequent keywords.',
-                ),
-                data: (keywords) => KeywordFrequencyChart(
-                  keywords: keywords,
-                  onKeywordTap: onKeywordTap,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: frequentState.when(
+                  loading: () => const KeywordFrequencySkeleton(
+                    key: ValueKey('frequent_loading'),
+                  ),
+                  error: (_, _) => _SectionError(
+                    key: const ValueKey('frequent_error'),
+                    message: 'Unable to load frequent keywords.',
+                  ),
+                  data: (keywords) => KeywordFrequencyChart(
+                    key: const ValueKey('frequent_data'),
+                    keywords: keywords,
+                    onKeywordTap: onKeywordTap,
+                  ),
                 ),
               ),
             ),
@@ -125,45 +133,66 @@ class DiscoverScreen extends ConsumerWidget {
             sliver: SliverToBoxAdapter(
               child: _SectionHeader(
                 title: 'Trending Keywords',
-                subtitle: 'Rising keywords ($currentYear-${currentYear - 2})',
+                subtitle: 'Rising keywords (${currentYear - 2} - $currentYear)',
               ),
             ),
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             sliver: SliverToBoxAdapter(
-              child: trendingState.when(
-                loading: () => Wrap(
-                  spacing: 10,
-                  runSpacing: 12,
-                  children: const [
-                    KeywordChipSkeleton(width: 120),
-                    KeywordChipSkeleton(width: 160),
-                    KeywordChipSkeleton(width: 100),
-                    KeywordChipSkeleton(width: 140),
-                  ],
-                ),
-                error: (_, _) => _SectionError(
-                  message: 'Unable to load trending keywords.',
-                ),
-                data: (keywords) {
-                  if (keywords.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Wrap(
-                    spacing: 10,
-                    runSpacing: 12,
-                    children: keywords
-                        .map(
-                          (k) => KeywordChip(
-                            keyword: k,
-                            showCount: true,
-                            onTap: () => onKeywordTap(k),
-                          ),
-                        )
-                        .toList(),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                layoutBuilder: (currentChild, previousChildren) {
+                  return Stack(
+                    alignment: Alignment.topLeft,
+                    children: [
+                      ...previousChildren,
+                      ?currentChild,
+                    ],
                   );
                 },
+                child: trendingState.when(
+                  loading: () => Wrap(
+                    key: const ValueKey('trending_loading'),
+                    alignment: WrapAlignment.start,
+                    spacing: 10,
+                    runSpacing: 12,
+                    children: const [
+                      KeywordChipSkeleton(width: 120),
+                      KeywordChipSkeleton(width: 160),
+                      KeywordChipSkeleton(width: 100),
+                      KeywordChipSkeleton(width: 140),
+                    ],
+                  ),
+                  error: (_, _) => _SectionError(
+                    key: const ValueKey('trending_error'),
+                    message: 'Unable to load trending keywords.',
+                  ),
+                  data: (keywords) {
+                    if (keywords.isEmpty) {
+                      return const SizedBox.shrink(
+                        key: ValueKey('trending_empty'),
+                      );
+                    }
+                    return Wrap(
+                      key: const ValueKey('trending_data'),
+                      alignment: WrapAlignment.start,
+                      spacing: 10,
+                      runSpacing: 12,
+                      children: keywords
+                          .map(
+                            (k) => KeywordChip(
+                              keyword: k,
+                              showCount: true,
+                              onTap: () => onKeywordTap(k),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -205,7 +234,7 @@ class _SectionHeader extends StatelessWidget {
 class _SectionError extends StatelessWidget {
   final String message;
 
-  const _SectionError({required this.message});
+  const _SectionError({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {

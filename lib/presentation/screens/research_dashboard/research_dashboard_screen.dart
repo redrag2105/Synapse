@@ -47,7 +47,7 @@ final dashboardTopJournalProvider = FutureProvider.autoDispose
       );
       return result.fold(
         (failure) => null,
-        (journals) => journals.isNotEmpty ? journals.first : null,
+        (page) => page.journals.isNotEmpty ? page.journals.first : null,
       );
     });
 

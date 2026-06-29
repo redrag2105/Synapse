@@ -97,6 +97,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
     if (index != widget.navigationShell.currentIndex) {
       scheduleTabBarSticky(ref, false);
     }
+    syncShellTabIndex(ref, index);
     widget.navigationShell.goBranch(
       index,
       initialLocation: index == widget.navigationShell.currentIndex,
@@ -106,6 +107,11 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
   @override
   Widget build(BuildContext context) {
     ref.listen<bool>(tabBarStickyProvider, _onStickyChanged);
+
+    final shellIndex = widget.navigationShell.currentIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) syncShellTabIndex(ref, shellIndex);
+    });
 
     return ColoredBox(
       color: AppColors.surfaceGray,

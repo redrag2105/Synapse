@@ -8,6 +8,7 @@ import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
+import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/screens/trend/widgets/metric_card.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_empty_state.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_insight_card.dart';
@@ -16,6 +17,7 @@ import 'package:synapse/presentation/screens/trend/widgets/trend_skeleton.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_small_stat_box.dart';
 import 'package:synapse/presentation/screens/trend/widgets/trend_forecast_card.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
+import 'package:synapse/presentation/utils/shell_keyword_intent_listener.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
 
@@ -45,51 +47,66 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
       duration: const Duration(milliseconds: 200),
     );
 
-    final notifier = ref.read(publicationTrendControllerProvider.notifier);
     final hasNewArgs = widget.topicId != null || widget.topicName != null;
-    final extKeyword = notifier.pendingExternalKeyword;
-    final extTopicName = notifier.pendingExternalTopicName;
-
-    if (extKeyword != null) {
-      _isIsolatedMode = true;
-      _currentTitle = extTopicName ?? extKeyword;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifier.fetchTrend(
-          keyword: extKeyword,
-          topicName: extTopicName,
-          saveHistory: false,
-        );
-      });
-      notifier.pendingExternalKeyword = null;
-      notifier.pendingExternalTopicName = null;
-    } else if (hasNewArgs) {
+    if (hasNewArgs) {
       _isIsolatedMode = true;
       _currentTitle = widget.topicName ?? 'Global Research Publications';
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    }
+
+    final notifier = ref.read(publicationTrendControllerProvider.notifier);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scheduleShellKeywordIntentConsumption(
+        ref: ref,
+        tabIndex: ShellTabIndex.trend,
+        onKeyword: _applyKeyword,
+      );
+      if (ref.read(shellKeywordIntentProvider) != null) return;
+
+      if (hasNewArgs) {
         notifier.fetchTrend(
           topicId: widget.topicId,
           topicName: widget.topicName,
           saveHistory: false,
         );
-      });
-    } else {
-      _isIsolatedMode = false;
+        return;
+      }
+
       final lastQuery = notifier.lastQuery;
       final lastTopicName = notifier.lastTopicName;
 
       if (lastTopicName != null || lastQuery.isNotEmpty) {
-        _currentTitle = lastTopicName ?? lastQuery;
-      } else {
-        _currentTitle = 'Global Research Publications';
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          notifier.fetchTrend(saveHistory: true);
+        setState(() {
+          _currentTitle = lastTopicName ?? lastQuery;
         });
+      } else {
+        notifier.fetchTrend(saveHistory: true);
       }
-    }
+    });
+  }
+
+  void _applyKeyword(String keyword) {
+    final query = keyword.trim();
+    if (query.isEmpty) return;
+
+    setState(() {
+      _currentTitle = query;
+      _isSearchBarFocused = false;
+    });
+
+    _focusAnimController.reverse();
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    ref.read(publicationTrendControllerProvider.notifier).fetchTrend(
+          keyword: query,
+          topicName: query,
+          saveHistory: true,
+        );
   }
 
   @override
   void dispose() {
+    ref.read(tabBarSuppressedProvider.notifier).setSuppressed(false);
     _focusAnimController.dispose();
     super.dispose();
   }
@@ -122,6 +139,7 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
 
   void _onFocusChanged(bool hasFocus) {
     _isSearchBarFocused = hasFocus;
+    updateTabBarSuppressed(ref, hasFocus);
     if (hasFocus) {
       _focusAnimController.forward();
     } else {
@@ -131,6 +149,12 @@ class _TrendScreenState extends ConsumerState<TrendScreen>
 
   @override
   Widget build(BuildContext context) {
+    bindShellKeywordIntent(
+      ref: ref,
+      tabIndex: ShellTabIndex.trend,
+      onKeyword: _applyKeyword,
+    );
+
     final trendState = ref.watch(publicationTrendControllerProvider);
     final topPadding = MediaQuery.paddingOf(context).top;
 

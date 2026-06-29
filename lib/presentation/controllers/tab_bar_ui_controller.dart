@@ -36,3 +36,79 @@ void updateTabBarStickyFromScroll(WidgetRef ref, ScrollMetrics metrics) {
   if (ref.read(tabBarStickyProvider) == atBottom) return;
   scheduleTabBarSticky(ref, atBottom);
 }
+
+class TabBarSuppressedNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setSuppressed(bool value) {
+    if (state != value) state = value;
+  }
+}
+
+/// Hides the shell tab bar while a screen search field is focused.
+final tabBarSuppressedProvider =
+    NotifierProvider<TabBarSuppressedNotifier, bool>(
+      TabBarSuppressedNotifier.new,
+    );
+
+void updateTabBarSuppressed(WidgetRef ref, bool suppressed) {
+  ref.read(tabBarSuppressedProvider.notifier).setSuppressed(suppressed);
+}
+
+/// Shell branch indices — must match [StatefulShellRoute] branch order in [app_routes].
+abstract final class ShellTabIndex {
+  static const int home = 0;
+  static const int trend = 1;
+  static const int search = 2;
+  static const int authors = 3;
+  static const int journals = 4;
+}
+
+class ShellTabIndexNotifier extends Notifier<int> {
+  @override
+  int build() => ShellTabIndex.home;
+
+  void setIndex(int index) {
+    if (state != index) state = index;
+  }
+}
+
+/// Currently visible shell tab (updated by [AppShellScreen]).
+final shellTabIndexProvider =
+    NotifierProvider<ShellTabIndexNotifier, int>(ShellTabIndexNotifier.new);
+
+void syncShellTabIndex(WidgetRef ref, int index) {
+  ref.read(shellTabIndexProvider.notifier).setIndex(index);
+}
+
+class ShellKeywordIntent {
+  final int targetTab;
+  final String keyword;
+
+  const ShellKeywordIntent({
+    required this.targetTab,
+    required this.keyword,
+  });
+}
+
+class ShellKeywordIntentNotifier extends Notifier<ShellKeywordIntent?> {
+  @override
+  ShellKeywordIntent? build() => null;
+
+  void dispatch(int targetTab, String keyword) {
+    final trimmed = keyword.trim();
+    if (trimmed.isEmpty) return;
+    state = ShellKeywordIntent(targetTab: targetTab, keyword: trimmed);
+  }
+
+  void clear() {
+    if (state != null) state = null;
+  }
+}
+
+/// Cross-tab keyword navigation (e.g. Research Insights FAB → Trend / Authors / Journals).
+final shellKeywordIntentProvider =
+    NotifierProvider<ShellKeywordIntentNotifier, ShellKeywordIntent?>(
+      ShellKeywordIntentNotifier.new,
+    );

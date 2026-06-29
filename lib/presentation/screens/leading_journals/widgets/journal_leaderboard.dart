@@ -16,14 +16,15 @@ class JournalLeaderboard extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: journals.length,
-      separatorBuilder: (_, _) => const Divider(
-        height: 1,
-        color: AppColors.borderGray,
-      ),
+      separatorBuilder: (_, _) =>
+          const Divider(height: 1, color: AppColors.borderGray),
       itemBuilder: (context, index) {
         final journal = journals[index];
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 4,
+            vertical: 4,
+          ),
           leading: CircleAvatar(
             radius: 18,
             backgroundColor: _rankBackground(index + 1),
@@ -38,8 +39,7 @@ class JournalLeaderboard extends StatelessWidget {
           title: Text(
             journal.name,
             style: AppTextStyles.h3.copyWith(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+              fontSize: 12,
               color: AppColors.textPrimary,
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
+import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/navigation/center_fab_button.dart';
 import 'package:synapse/presentation/widgets/navigation/notched_bar_shape.dart';
@@ -43,6 +44,8 @@ class AppBottomNavBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final suppressed = ref.watch(tabBarSuppressedProvider);
+    final hideBar = keyboardVisible || suppressed;
     final centerFabIndex = _centerFabIndex;
 
     return AnimatedBuilder(
@@ -58,12 +61,12 @@ class AppBottomNavBar extends ConsumerWidget {
         return AnimatedSlide(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
-          offset: keyboardVisible ? const Offset(0, 1.2) : Offset.zero,
+          offset: hideBar ? const Offset(0, 1.2) : Offset.zero,
           child: AnimatedOpacity(
             duration: const Duration(milliseconds: 200),
-            opacity: keyboardVisible ? 0 : 1,
+            opacity: hideBar ? 0 : 1,
             child: IgnorePointer(
-              ignoring: keyboardVisible,
+              ignoring: hideBar,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   geometry.horizontalPadding,

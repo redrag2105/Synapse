@@ -1,4 +1,3 @@
-import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -6,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/presentation/controllers/publication_search_controller.dart';
-import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
+import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/publication_card.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/publication_card_skeleton.dart';
+import 'package:synapse/presentation/screens/publication_search/widgets/research_insights_fab.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/search_empty_state.dart';
-import 'package:synapse/presentation/screens/publication_search/widgets/smart_trend_button.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
@@ -31,8 +30,6 @@ class _PublicationSearchScreenState
 
   final ScrollController _scrollController = ScrollController();
 
-  final ValueNotifier<bool> _isButtonExpanded = ValueNotifier(true);
-
   @override
   bool get wantKeepAlive => true;
 
@@ -48,14 +45,6 @@ class _PublicationSearchScreenState
   }
 
   void _onScroll() {
-    if (_scrollController.position.userScrollDirection ==
-        ScrollDirection.reverse) {
-      if (_isButtonExpanded.value) _isButtonExpanded.value = false;
-    } else if (_scrollController.position.userScrollDirection ==
-        ScrollDirection.forward) {
-      if (!_isButtonExpanded.value) _isButtonExpanded.value = true;
-    }
-
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       final controller = ref.read(publicationSearchControllerProvider.notifier);
@@ -71,15 +60,17 @@ class _PublicationSearchScreenState
 
   @override
   void dispose() {
+    ref.read(tabBarSuppressedProvider.notifier).setSuppressed(false);
     _focusAnimController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _isButtonExpanded.dispose();
     super.dispose();
   }
 
   void _onFocusChanged(bool hasFocus) {
-    _isFocused = hasFocus;
+    if (_isFocused == hasFocus) return;
+    setState(() => _isFocused = hasFocus);
+    updateTabBarSuppressed(ref, hasFocus);
     if (hasFocus) {
       _focusAnimController.forward();
     } else {
@@ -95,6 +86,14 @@ class _PublicationSearchScreenState
 
     final topPadding = MediaQuery.paddingOf(context).top;
     final lastQuery = controller.lastQuery;
+    final tabBarInset = AppBottomNavLayout.maxOverlayInset(
+      MediaQuery.paddingOf(context).bottom,
+    );
+    final showInsightsFab = !_isFocused &&
+        lastQuery.isNotEmpty &&
+        !(searchState.isLoading && !searchState.hasValue);
+    final isSearchTabActive =
+        ref.watch(shellTabIndexProvider) == ShellTabIndex.search;
 
     return TabScreenScaffold(
       body: ColoredBox(
@@ -257,40 +256,32 @@ class _PublicationSearchScreenState
               },
             ),
 
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutBack,
-              bottom: (_isFocused || lastQuery.isEmpty || searchState.isLoading)
-                  ? -100
-                  : AppBottomNavLayout.maxOverlayInset(
-                        MediaQuery.paddingOf(context).bottom,
-                      ) +
-                      8,
-              left: 16,
-              right: 16,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: _isButtonExpanded,
-                builder: (context, isExpanded, child) {
-                  return AnimatedAlign(
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeOutCubic,
-                    alignment: isExpanded
-                        ? Alignment.bottomCenter
-                        : Alignment.bottomRight,
-                    child: SmartTrendButton(
-                      keyword: lastQuery,
-                      isExpanded: isExpanded,
-                      onTap: () {
-                        ref
-                            .read(publicationTrendControllerProvider.notifier)
-                            .setExternalNavigation(lastQuery, lastQuery);
-                        context.go(AppRoutes.trend);
-                      },
-                    ),
-                  );
-                },
+            if (showInsightsFab)
+              Positioned.fill(
+                child: ResearchInsightsFab(
+                  tabBarInset: tabBarInset,
+                  keyword: lastQuery,
+                  screenActive: isSearchTabActive,
+                  onTrend: () {
+                    ref
+                        .read(shellKeywordIntentProvider.notifier)
+                        .dispatch(ShellTabIndex.trend, lastQuery);
+                    context.go(AppRoutes.trend);
+                  },
+                  onAuthors: () {
+                    ref
+                        .read(shellKeywordIntentProvider.notifier)
+                        .dispatch(ShellTabIndex.authors, lastQuery);
+                    context.go(AppRoutes.authors);
+                  },
+                  onJournals: () {
+                    ref
+                        .read(shellKeywordIntentProvider.notifier)
+                        .dispatch(ShellTabIndex.journals, lastQuery);
+                    context.go(AppRoutes.journals);
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),

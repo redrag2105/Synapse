@@ -5,12 +5,14 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/presentation/controllers/top_author_controller.dart';
+import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/screens/top_authors/widgets/author_rank_tile.dart';
 import 'package:synapse/presentation/screens/top_authors/widgets/author_topic_heatmap.dart';
 import 'package:synapse/presentation/screens/top_authors/widgets/global_author_insights_row.dart';
 import 'package:synapse/presentation/screens/top_authors/widgets/top_authors_empty_state.dart';
 import 'package:synapse/presentation/screens/top_authors/widgets/top_authors_skeleton.dart';
 import 'package:synapse/presentation/widgets/pagination_footer.dart';
+import 'package:synapse/presentation/utils/shell_keyword_intent_listener.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
@@ -41,24 +43,47 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
     );
     _scrollController = ScrollController()..addListener(_onScroll);
 
-    final notifier = ref.read(topAuthorsControllerProvider.notifier);
-    final lastQuery = notifier.lastQuery;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scheduleShellKeywordIntentConsumption(
+        ref: ref,
+        tabIndex: ShellTabIndex.authors,
+        onKeyword: _applyKeyword,
+      );
+      if (ref.read(shellKeywordIntentProvider) != null) return;
 
-    if (lastQuery.isNotEmpty) {
-      _currentTitle = lastQuery;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      final notifier = ref.read(topAuthorsControllerProvider.notifier);
+      final lastQuery = notifier.lastQuery;
+
+      if (lastQuery.isNotEmpty) {
+        setState(() => _currentTitle = lastQuery);
         notifier.fetchTopAuthors(lastQuery);
-      });
-    } else {
-      _currentTitle = _globalTitle;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      } else {
         notifier.fetchTopAuthors('');
-      });
-    }
+      }
+    });
+  }
+
+  void _applyKeyword(String keyword) {
+    final query = keyword.trim();
+    final isGlobal = query.isEmpty;
+
+    setState(() {
+      _currentTitle = isGlobal ? _globalTitle : query;
+      _isSearchBarFocused = false;
+    });
+
+    _focusAnimController.reverse();
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    ref.read(topAuthorsControllerProvider.notifier).fetchTopAuthors(
+          isGlobal ? '' : query,
+          forceRefresh: true,
+        );
   }
 
   @override
   void dispose() {
+    ref.read(tabBarSuppressedProvider.notifier).setSuppressed(false);
     _focusAnimController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -80,6 +105,7 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
 
   void _onFocusChanged(bool hasFocus) {
     _isSearchBarFocused = hasFocus;
+    updateTabBarSuppressed(ref, hasFocus);
     if (hasFocus) {
       _focusAnimController.forward();
     } else {
@@ -114,6 +140,12 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
 
   @override
   Widget build(BuildContext context) {
+    bindShellKeywordIntent(
+      ref: ref,
+      tabIndex: ShellTabIndex.authors,
+      onKeyword: _applyKeyword,
+    );
+
     final viewState = ref.watch(topAuthorsControllerProvider);
     final topPadding = MediaQuery.paddingOf(context).top;
     final isGlobalView = ref

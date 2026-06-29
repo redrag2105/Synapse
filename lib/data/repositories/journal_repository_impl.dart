@@ -4,7 +4,7 @@ import 'package:synapse/app/utils/error_handler.dart';
 import 'package:synapse/app/utils/request_deduplicator.dart';
 import 'package:synapse/data/models/journal_model.dart';
 import 'package:synapse/data/providers/apis/api_journal.dart';
-import 'package:synapse/domain/entities/journal_entity.dart';
+import 'package:synapse/domain/entities/top_journals_page.dart';
 import 'package:synapse/domain/repositories/journal_repository.dart';
 
 class JournalRepositoryImpl
@@ -15,7 +15,7 @@ class JournalRepositoryImpl
   JournalRepositoryImpl(this._apiJournal);
 
   @override
-  Future<Either<Failure, List<JournalEntity>>> getTopJournalsByTopicId(
+  Future<Either<Failure, TopJournalsPage>> getTopJournalsByTopicId(
     String topicId, {
     int limit = 10,
   }) async {
@@ -34,8 +34,15 @@ class JournalRepositoryImpl
           final journals = results
               .map((e) => JournalModel.fromJson(e))
               .toList();
+          final totalCount =
+              response['meta']?['count'] as int? ?? journals.length;
 
-          return Right(journals);
+          return Right(
+            TopJournalsPage(
+              journals: journals,
+              totalCount: totalCount,
+            ),
+          );
         } catch (e) {
           return Left(ErrorHandler.handle(e));
         }
