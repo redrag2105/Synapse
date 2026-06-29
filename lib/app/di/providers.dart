@@ -27,6 +27,7 @@ import 'package:synapse/domain/usecases/author/get_global_author_insights_usecas
 import 'package:synapse/domain/usecases/author/get_top_authors_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_by_id_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_trend_usecase.dart';
+import 'package:synapse/domain/usecases/journal/get_journal_by_id_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_leading_journals_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
 import 'package:synapse/domain/usecases/keyword/get_keyword_by_id_usecase.dart';
@@ -145,6 +146,10 @@ final getTopJournalsUseCaseProvider = Provider<GetTopJournalsUseCase>((ref) {
     ref.watch(topicRepositoryProvider),
     ref.watch(journalRepositoryProvider),
   );
+});
+
+final getJournalByIdUseCaseProvider = Provider<GetJournalByIdUseCase>((ref) {
+  return GetJournalByIdUseCase(ref.watch(journalRepositoryProvider));
 });
 
 final getLeadingJournalsUseCaseProvider =

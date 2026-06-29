@@ -9,6 +9,8 @@ class TrendLineChart extends StatelessWidget {
   final double minX;
   final double maxX;
   final double maxY;
+  final String title;
+  final String? subtitle;
 
   const TrendLineChart({
     super.key,
@@ -16,6 +18,8 @@ class TrendLineChart extends StatelessWidget {
     required this.minX,
     required this.maxX,
     required this.maxY,
+    this.title = 'Publication Trend over Time',
+    this.subtitle,
   });
 
   @override
@@ -39,12 +43,24 @@ class TrendLineChart extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 12.0, bottom: 20.0),
-            child: Text(
-              'Publication Trend over Time',
-              style: AppTextStyles.h3.copyWith(
-                fontSize: 15,
-                color: AppColors.brandBlue900,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.h3.copyWith(
+                    fontSize: 15,
+                    color: AppColors.brandBlue900,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle!,
+                    style: AppTextStyles.metadata.copyWith(fontSize: 12),
+                  ),
+                ],
+              ],
             ),
           ),
           SizedBox(

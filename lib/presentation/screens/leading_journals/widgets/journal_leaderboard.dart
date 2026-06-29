@@ -7,8 +7,13 @@ import 'package:synapse/domain/entities/leading_journal_entity.dart';
 /// Section D — full ranked list with medal styling for the top 3 ranks.
 class JournalLeaderboard extends StatelessWidget {
   final List<LeadingJournalEntity> journals;
+  final ValueChanged<LeadingJournalEntity>? onJournalTap;
 
-  const JournalLeaderboard({super.key, required this.journals});
+  const JournalLeaderboard({
+    super.key,
+    required this.journals,
+    this.onJournalTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +30,7 @@ class JournalLeaderboard extends StatelessWidget {
             horizontal: 4,
             vertical: 4,
           ),
+          onTap: onJournalTap != null ? () => onJournalTap!(journal) : null,
           leading: CircleAvatar(
             radius: 18,
             backgroundColor: _rankBackground(index + 1),

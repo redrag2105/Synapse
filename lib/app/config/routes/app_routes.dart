@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/presentation/screens/author_detail/author_detail_screen.dart';
 import 'package:synapse/presentation/screens/discover/discover_screen.dart';
+import 'package:synapse/presentation/screens/journal_detail/journal_detail_screen.dart';
 import 'package:synapse/presentation/screens/leading_journals/leading_journals_screen.dart';
 import 'package:synapse/presentation/screens/profile/profile_screen.dart';
 import 'package:synapse/presentation/screens/publication_detail/publication_detail_screen.dart';
@@ -22,6 +23,9 @@ class AppRoutes {
   static const String authors = '/authors';
   static const String journals = '/journals';
   static const String profile = '/profile';
+
+  static String journalDetail(String journalId) =>
+      '$journals/${Uri.encodeComponent(journalId)}';
 
   /// Keyword Detail — research analytics for a single keyword.
   static String keywordDetail(String keyword) =>
@@ -111,6 +115,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.journals,
                 builder: (context, state) => const LeadingJournalsScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':journalId',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    builder: (context, state) {
+                      final journalId = state.pathParameters['journalId'] ?? '';
+                      return JournalDetailScreen(journalId: journalId);
+                    },
+                  ),
+                ],
               ),
             ],
           ),

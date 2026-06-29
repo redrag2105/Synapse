@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/domain/entities/leading_journal_entity.dart';
 import 'package:synapse/presentation/controllers/leading_journals_controller.dart';
 import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
@@ -253,7 +255,11 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
           const SizedBox(height: 24),
           _buildSectionTitle('Detailed Leaderboard'),
           const SizedBox(height: 12),
-          JournalLeaderboard(journals: overview.journals),
+          JournalLeaderboard(
+            journals: overview.journals,
+            onJournalTap: (journal) =>
+                context.push(AppRoutes.journalDetail(journal.id)),
+          ),
         ],
       ),
     );
