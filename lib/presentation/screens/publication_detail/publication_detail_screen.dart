@@ -4,19 +4,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
+import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/controllers/publication_detail_controller.dart';
 import 'package:synapse/presentation/screens/publication_detail/widgets/publication_banner.dart';
 import 'package:synapse/presentation/screens/publication_detail/widgets/publication_content.dart';
 import 'package:synapse/presentation/screens/publication_detail/widgets/publication_detail_skeleton.dart';
 
-class PublicationDetailScreen extends ConsumerWidget {
+class PublicationDetailScreen extends ConsumerStatefulWidget {
   final String publicationId;
 
   const PublicationDetailScreen({super.key, required this.publicationId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final detailState = ref.watch(publicationDetailProvider(publicationId));
+  ConsumerState<PublicationDetailScreen> createState() =>
+      _PublicationDetailScreenState();
+}
+
+class _PublicationDetailScreenState
+    extends ConsumerState<PublicationDetailScreen> {
+  bool _analyticsLogged = false;
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(publicationDetailProvider(widget.publicationId), (previous, next) {
+      if (_analyticsLogged) return;
+      next.whenData((publication) {
+        _analyticsLogged = true;
+        ref.read(analyticsServiceProvider).logViewPublication(
+              publicationTitle: publication.title,
+              publicationYear: publication.publicationYear,
+            );
+      });
+    });
+
+    final detailState = ref.watch(publicationDetailProvider(widget.publicationId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -52,7 +73,7 @@ class PublicationDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => ref.invalidate(
-                      publicationDetailProvider(publicationId),
+                      publicationDetailProvider(widget.publicationId),
                     ),
                     child: const Text('Thử lại'),
                   ),

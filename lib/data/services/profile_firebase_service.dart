@@ -62,6 +62,8 @@ class ProfileFirebaseService {
     required User user,
     required int maxJournals,
     required int maxKeywords,
+    required List<Map<String, String>>
+    notifications, // Truyền danh sách thông báo vào đây
   }) async {
     if (kIsWeb) {
       throw UnsupportedError('Report export is not supported on web.');
@@ -70,33 +72,210 @@ class ProfileFirebaseService {
     final pdf = pw.Document();
     final generatedAt = DateTime.now();
 
+    // Định dạng màu sắc chuẩn UI/UX
+    final primaryColor = PdfColor.fromHex('#1E3A8A'); // Xanh dương đậm
+    final secondaryColor = PdfColor.fromHex('#F3F4F6'); // Xám nhạt nền
+    final accentColor = PdfColor.fromHex('#3B82F6'); // Xanh dương sáng
+    final textColor = PdfColor.fromHex('#1F2937'); // Xám đen
+
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        build: (context) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(
-              'Synapse Analytics Report',
-              style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          // --- HEADER ---
+          pw.Container(
+            padding: const pw.EdgeInsets.all(16),
+            decoration: pw.BoxDecoration(
+              color: primaryColor,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
             ),
-            pw.SizedBox(height: 8),
-            pw.Text('Generated: ${generatedAt.toIso8601String()}'),
-            pw.SizedBox(height: 20),
-            pw.Text('Account: ${user.displayName ?? user.email ?? user.uid}'),
-            pw.SizedBox(height: 24),
-            pw.Text(
-              'Dashboard summary',
-              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Synapse Analytics',
+                      style: pw.TextStyle(
+                        color: PdfColors.white,
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      'Research Trend Dashboard Report',
+                      style: pw.TextStyle(
+                        color: PdfColors.grey300,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Text(
+                  '${generatedAt.day}/${generatedAt.month}/${generatedAt.year}',
+                  style: pw.TextStyle(color: PdfColors.white, fontSize: 14),
+                ),
+              ],
             ),
-            pw.SizedBox(height: 8),
-            pw.Bullet(text: 'Max journals displayed: $maxJournals'),
-            pw.Bullet(text: 'Max keywords displayed: $maxKeywords'),
-            pw.SizedBox(height: 16),
-            pw.Text(
-              'This report was exported from the Synapse research dashboard.',
+          ),
+          pw.SizedBox(height: 24),
+
+          // --- ACCOUNT INFO ---
+          pw.Text(
+            'Account Information',
+            style: pw.TextStyle(
+              color: primaryColor,
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
             ),
-          ],
+          ),
+          pw.Divider(color: accentColor, thickness: 1),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'User: ${user.displayName ?? "No Name"}',
+            style: pw.TextStyle(color: textColor, fontSize: 14),
+          ),
+          pw.Text(
+            'Email: ${user.email ?? user.uid}',
+            style: pw.TextStyle(color: textColor, fontSize: 14),
+          ),
+          pw.SizedBox(height: 24),
+
+          // --- DASHBOARD SUMMARY ---
+          pw.Text(
+            'Dashboard Settings',
+            style: pw.TextStyle(
+              color: primaryColor,
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.Divider(color: accentColor, thickness: 1),
+          pw.SizedBox(height: 8),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              color: secondaryColor,
+              border: pw.Border.all(color: PdfColors.grey300),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+              children: [
+                pw.Column(
+                  children: [
+                    pw.Text(
+                      'Max Journals',
+                      style: pw.TextStyle(
+                        color: PdfColors.grey600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    pw.Text(
+                      '$maxJournals',
+                      style: pw.TextStyle(
+                        color: textColor,
+                        fontSize: 20,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Container(width: 1, height: 30, color: PdfColors.grey400),
+                pw.Column(
+                  children: [
+                    pw.Text(
+                      'Max Keywords',
+                      style: pw.TextStyle(
+                        color: PdfColors.grey600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    pw.Text(
+                      '$maxKeywords',
+                      style: pw.TextStyle(
+                        color: textColor,
+                        fontSize: 20,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 24),
+
+          // --- NOTIFICATION CENTER ---
+          pw.Text(
+            'Recent Notifications',
+            style: pw.TextStyle(
+              color: primaryColor,
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.Divider(color: accentColor, thickness: 1),
+          pw.SizedBox(height: 8),
+
+          if (notifications.isEmpty)
+            pw.Text(
+              'No notifications recorded.',
+              style: pw.TextStyle(
+                color: PdfColors.grey600,
+                fontStyle: pw.FontStyle.italic,
+              ),
+            )
+          else
+            pw.ListView.builder(
+              itemCount: notifications.length,
+              itemBuilder: (context, index) {
+                final notif = notifications[index];
+                return pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 8),
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border(
+                      left: pw.BorderSide(color: accentColor, width: 4),
+                    ),
+                    color: secondaryColor,
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        notif['title'] ?? 'No Title',
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        notif['body'] ?? 'No Body',
+                        style: pw.TextStyle(
+                          color: PdfColors.grey700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+
+        // --- FOOTER ---
+        footer: (context) => pw.Container(
+          alignment: pw.Alignment.center,
+          margin: const pw.EdgeInsets.only(top: 10),
+          child: pw.Text(
+            'Generated by Synapse - Page ${context.pageNumber} of ${context.pagesCount}',
+            style: pw.TextStyle(color: PdfColors.grey500, fontSize: 10),
+          ),
         ),
       ),
     );

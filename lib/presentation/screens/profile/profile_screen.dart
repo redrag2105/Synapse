@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
+import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/controllers/auth_providers.dart';
 import 'package:synapse/presentation/controllers/profile_features_controller.dart';
 import 'package:synapse/presentation/screens/profile/widgets/profile_signed_in_view.dart';
@@ -64,7 +65,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           return ProfileSignedInView(
             topPadding: topPadding,
             user: user,
-            onSignOut: () => ref.read(authServiceProvider).signOut(),
+            onSignOut: () async {
+              final analytics = ref.read(analyticsServiceProvider);
+              final auth = ref.read(authServiceProvider);
+              await analytics.logLogout();
+              await auth.signOut();
+            },
           );
         },
       ),
@@ -77,7 +83,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     setState(() => _isSigningIn = true);
 
     try {
-      await ref.read(authServiceProvider).signInWithGoogle();
+      final credential = await ref.read(authServiceProvider).signInWithGoogle();
+      final analytics = ref.read(analyticsServiceProvider);
+      await analytics.setUserId(credential.user?.uid);
+      await analytics.logLogin();
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         _showError(e.message ?? 'Sign-in failed. Please try again.');

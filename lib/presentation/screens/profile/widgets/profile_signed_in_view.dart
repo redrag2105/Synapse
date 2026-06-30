@@ -46,7 +46,7 @@ class ProfileSignedInView extends ConsumerWidget {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 52)),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if (features.statusMessage != null) ...[
@@ -127,6 +127,8 @@ class ProfileSignedInView extends ConsumerWidget {
 }
 
 class _ProfileUserHeader extends StatelessWidget {
+  static const double _cardOverlap = 52;
+
   final double topPadding;
   final User user;
   final VoidCallback onSignOut;
@@ -145,77 +147,122 @@ class _ProfileUserHeader extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.fromLTRB(8, topPadding + 4, 16, 72),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.brandBlue900, AppColors.brandBlue700],
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => context.pop(),
-                    icon: const Icon(CupertinoIcons.back, color: Colors.white),
+        Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.brandBlue900, AppColors.brandBlue700],
                   ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: onSignOut,
+                ),
+              ),
+            ),
+            const Positioned(
+              top: -20,
+              right: -50,
+              child: _ProfileHeaderOrb(size: 140, opacity: 0.04),
+            ),
+            Positioned(
+              left: -30,
+              bottom: _cardOverlap + 20,
+              child: const _ProfileHeaderOrb(size: 100, opacity: 0.03),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(8, topPadding + 4, 0, _cardOverlap),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => context.pop(),
+                        icon: const Icon(
+                          CupertinoIcons.back,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Profile',
+                                style: AppTextStyles.h1.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                width: 28,
+                                height: 2.5,
+                                decoration: BoxDecoration(
+                                  color: AppColors.warning,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: onSignOut,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          'Sign out',
+                          style: AppTextStyles.button.copyWith(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Text(
-                      'Sign out',
-                      style: AppTextStyles.button.copyWith(
-                        color: Colors.white,
-                        fontSize: 13,
+                      'Alerts, exports & Firebase tools',
+                      style: AppTextStyles.metadata.copyWith(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        fontSize: 12,
+                        height: 1.3,
                       ),
                     ),
                   ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Profile',
-                      style: AppTextStyles.h1.copyWith(
-                        color: Colors.white,
-                        fontSize: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(width: 40, height: 3, color: AppColors.warning),
-                    const SizedBox(height: 36),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         Positioned(
           left: 20,
           right: 20,
-          bottom: -40,
+          bottom: -_cardOverlap,
           child: ProfileSurfaceCard(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 UserAvatar(
                   photoUrl: user.photoURL,
                   displayName: displayName,
                   email: email,
-                  radius: 32,
+                  radius: 28,
                   backgroundColor: AppColors.surfaceGray,
                   initialsColor: AppColors.brandBlue900,
                   borderColor: AppColors.borderGray,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,21 +271,41 @@ class _ProfileUserHeader extends StatelessWidget {
                         displayName?.isNotEmpty == true
                             ? displayName!
                             : 'Account',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.h2.copyWith(
                           color: AppColors.brandBlue900,
-                          fontSize: 18,
+                          fontSize: 17,
                         ),
                       ),
                       if (email?.isNotEmpty == true) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           email!,
-                          style: AppTextStyles.metadata.copyWith(
-                            fontSize: 12,
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.metadata.copyWith(fontSize: 12),
                         ),
                       ],
                     ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandBlue900.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Active',
+                    style: AppTextStyles.metadata.copyWith(
+                      color: AppColors.brandBlue900,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -246,6 +313,27 @@ class _ProfileUserHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileHeaderOrb extends StatelessWidget {
+  final double size;
+  final double opacity;
+
+  const _ProfileHeaderOrb({required this.size, required this.opacity});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
+      ),
     );
   }
 }
@@ -340,7 +428,10 @@ class _NotificationCenter extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.title, style: AppTextStyles.h3.copyWith(fontSize: 14)),
+                      Text(
+                        item.title,
+                        style: AppTextStyles.h3.copyWith(fontSize: 14),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         item.body,
@@ -372,8 +463,18 @@ class _NotificationCenter extends StatelessWidget {
 
 String _formatTimestamp(DateTime date) {
   final months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   final hour = date.hour.toString().padLeft(2, '0');
   final minute = date.minute.toString().padLeft(2, '0');
@@ -549,7 +650,9 @@ class _CrashlyticsSection extends StatelessWidget {
               onPressed: onTestCrash,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.error,
-                side: BorderSide(color: AppColors.error.withValues(alpha: 0.35)),
+                side: BorderSide(
+                  color: AppColors.error.withValues(alpha: 0.35),
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

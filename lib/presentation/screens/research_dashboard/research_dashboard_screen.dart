@@ -14,6 +14,7 @@ import 'package:synapse/domain/usecases/author/get_top_authors_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
 
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
+import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
 
 final dashboardPublicationsProvider = FutureProvider.autoDispose
@@ -69,6 +70,12 @@ class _ResearchDashboardScreenState
     super.initState();
     _actualKeyword = widget.keyword == '__ALL__' ? '' : widget.keyword;
     _fetchData();
+
+    if (_actualKeyword.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(analyticsServiceProvider).logViewKeyword(keyword: _actualKeyword);
+      });
+    }
   }
 
   @override
@@ -77,6 +84,13 @@ class _ResearchDashboardScreenState
     if (oldWidget.keyword != widget.keyword) {
       _actualKeyword = widget.keyword == '__ALL__' ? '' : widget.keyword;
       _fetchData();
+      if (_actualKeyword.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(analyticsServiceProvider).logViewKeyword(
+                keyword: _actualKeyword,
+              );
+        });
+      }
     }
   }
 

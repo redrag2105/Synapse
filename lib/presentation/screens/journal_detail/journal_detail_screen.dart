@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
+import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/controllers/journal_detail_controller.dart';
 import 'package:synapse/presentation/controllers/journal_publications_controller.dart';
 import 'package:synapse/presentation/screens/journal_detail/widgets/journal_detail_content.dart';
@@ -25,6 +26,7 @@ class JournalDetailScreen extends ConsumerStatefulWidget {
 class _JournalDetailScreenState extends ConsumerState<JournalDetailScreen> {
   late final ScrollController _scrollController;
   final ScrollPaginationLock _paginationLock = ScrollPaginationLock();
+  bool _analyticsLogged = false;
 
   @override
   void initState() {
@@ -67,6 +69,16 @@ class _JournalDetailScreenState extends ConsumerState<JournalDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(journalDetailProvider(widget.journalId), (previous, next) {
+      if (_analyticsLogged) return;
+      next.whenData((journal) {
+        _analyticsLogged = true;
+        ref.read(analyticsServiceProvider).logViewJournal(
+              journalName: journal.displayName,
+            );
+      });
+    });
+
     final detailState = ref.watch(journalDetailProvider(widget.journalId));
     final publicationsState = ref.watch(
       journalPublicationsControllerProvider(widget.journalId),

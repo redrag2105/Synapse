@@ -4,30 +4,40 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/data/services/profile_firebase_service.dart';
 import 'package:synapse/domain/entities/profile_features_state.dart';
+import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
+import 'package:synapse/presentation/controllers/notification_inbox_controller.dart';
 
 final profileFirebaseServiceProvider = Provider<ProfileFirebaseService>((ref) {
   return ProfileFirebaseService();
 });
 
 final profileFeaturesControllerProvider =
-    NotifierProvider.autoDispose<ProfileFeaturesController, ProfileFeaturesState>(
-  ProfileFeaturesController.new,
-);
+    NotifierProvider.autoDispose<
+      ProfileFeaturesController,
+      ProfileFeaturesState
+    >(ProfileFeaturesController.new);
 
 class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
   User? _activeUser;
   Future<void>? _initializeFuture;
 
   @override
-  ProfileFeaturesState build() => const ProfileFeaturesState();
+  ProfileFeaturesState build() {
+    ref.onDispose(() {
+      _activeUser = null;
+      _initializeFuture = null;
+    });
+    return const ProfileFeaturesState();
+  }
 
   Future<void> initialize(User user) async {
     if (_activeUser?.uid == user.uid) return;
 
     if (_initializeFuture != null) {
       await _initializeFuture;
-      return;
+      if (!ref.mounted) return;
+      if (_activeUser?.uid == user.uid) return;
     }
 
     _initializeFuture = _initializeForUser(user);
@@ -40,16 +50,28 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
 
   Future<void> _initializeForUser(User user) async {
     _activeUser = user;
-    await ref.read(profileFirebaseServiceProvider).logFcmToken();
-    await ref.read(profileFirebaseServiceProvider).requestNotificationPermission();
+    final firebaseService = ref.read(profileFirebaseServiceProvider);
+
+    await firebaseService.logFcmToken();
+    if (!ref.mounted) return;
+
+    await firebaseService.requestNotificationPermission();
   }
 
   Future<void> refreshRemoteConfig() async {
-    state = state.copyWith(isLoadingRemoteConfig: true, clearStatusMessage: true);
+    state = state.copyWith(
+      isLoadingRemoteConfig: true,
+      clearStatusMessage: true,
+    );
+
+    final remoteConfig = ref.read(appRemoteConfigProvider.notifier);
+
     try {
-      await ref.read(appRemoteConfigProvider.notifier).load(force: true);
+      await remoteConfig.load(force: true);
+      if (!ref.mounted) return;
       state = state.copyWith(isLoadingRemoteConfig: false);
     } catch (_) {
+      if (!ref.mounted) return;
       state = state.copyWith(
         isLoadingRemoteConfig: false,
         statusMessage: 'Could not load Remote Config values.',
@@ -62,6 +84,9 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
     if (user == null || state.isExportingReport) return;
 
     final config = ref.read(appRemoteConfigProvider);
+    final inbox = ref.read(notificationInboxProvider);
+    final profileService = ref.read(profileFirebaseServiceProvider);
+    final analytics = ref.read(analyticsServiceProvider);
 
     state = state.copyWith(
       isExportingReport: true,
@@ -70,17 +95,31 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
     );
 
     try {
-      final url = await ref.read(profileFirebaseServiceProvider).exportDashboardReport(
-            user: user,
-            maxJournals: config.maxJournalsDisplay,
-            maxKeywords: config.maxKeywordsDisplay,
-          );
+      final notificationMaps = inbox
+          .take(8)
+          .map((n) => {'title': n.title, 'body': n.body})
+          .toList();
+
+      final url = await profileService.exportDashboardReport(
+        user: user,
+        maxJournals: config.maxJournalsDisplay,
+        maxKeywords: config.maxKeywordsDisplay,
+        notifications: notificationMaps,
+      );
+
+      if (!ref.mounted) return;
+
+      await analytics.logExportPdf(topic: 'Synapse Dashboard Report');
+
+      if (!ref.mounted) return;
+
       state = state.copyWith(
         isExportingReport: false,
         uploadedReportUrl: url,
         statusMessage: 'Report uploaded successfully.',
       );
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(
         isExportingReport: false,
         statusMessage: 'Report export failed: $e',
@@ -89,7 +128,9 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
   }
 
   Future<void> recordHandledException() async {
-    await ref.read(profileFirebaseServiceProvider).recordHandledException();
+    final profileService = ref.read(profileFirebaseServiceProvider);
+    await profileService.recordHandledException();
+    if (!ref.mounted) return;
     state = state.copyWith(
       statusMessage: 'Handled exception recorded in Crashlytics.',
     );

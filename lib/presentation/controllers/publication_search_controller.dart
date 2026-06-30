@@ -6,6 +6,7 @@ import 'package:synapse/app/utils/app_logger.dart';
 import 'package:synapse/domain/entities/publication_entity.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
+import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/widgets/pagination_footer.dart';
 
 class SearchCacheData {
@@ -86,6 +87,8 @@ class PublicationSearchController
     _isSearchByTopic = false;
     _keepAliveTemporarily();
 
+    ref.read(analyticsServiceProvider).logSearchTopic(keyword);
+
     final requestId = ++_currentRequestId;
 
     if (_cache.containsKey(normalizedKeyword)) {
@@ -154,6 +157,8 @@ class PublicationSearchController
     _lastTopic = topic;
     _isSearchByTopic = true;
     _keepAliveTemporarily();
+
+    ref.read(analyticsServiceProvider).logSearchTopic(topic.displayName);
 
     final requestId = ++_currentRequestId;
 
