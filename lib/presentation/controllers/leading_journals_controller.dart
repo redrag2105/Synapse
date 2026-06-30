@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/di/providers.dart';
 import 'package:synapse/app/types/failure.dart';
+import 'package:synapse/app/types/paginated_list_state.dart';
 import 'package:synapse/domain/entities/top_journals_page.dart';
 import 'package:synapse/domain/entities/leading_journal_entity.dart';
 import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
+import 'package:synapse/presentation/widgets/pagination_footer.dart';
 
 final leadingJournalsControllerProvider = AsyncNotifierProvider<
     LeadingJournalsController, LeadingJournalsOverview>(
@@ -12,6 +14,8 @@ final leadingJournalsControllerProvider = AsyncNotifierProvider<
 );
 
 class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
+  static const int _pageSize = PaginatedListState.defaultPageSize;
+
   static const LeadingJournalsOverview emptyOverview = LeadingJournalsOverview(
     journals: [],
     insights: LeadingJournalInsights(
@@ -33,10 +37,23 @@ class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
   String _currentKeyword = '';
   String lastQuery = '';
   int _requestId = 0;
+  int _journalPage = 1;
+  int _totalJournalCount = 0;
+  String? _resolvedTopicId;
+  bool _isLoadingMore = false;
+  final InFlightPageGuard _pageGuard = InFlightPageGuard();
 
   String get currentKeyword => _currentKeyword;
 
   bool get isGlobalView => _currentKeyword.isEmpty;
+
+  bool get isLoadingMore => _isLoadingMore || _pageGuard.hasPageInFlight;
+
+  bool get hasMoreJournals {
+    final current = state.value;
+    if (current == null || current.journals.isEmpty) return false;
+    return current.journals.length < _totalJournalCount;
+  }
 
   @override
   FutureOr<LeadingJournalsOverview> build() {
@@ -55,6 +72,10 @@ class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
 
     _currentKeyword = trimmed;
     lastQuery = trimmed;
+    _journalPage = 1;
+    _resolvedTopicId = null;
+    _totalJournalCount = 0;
+    _pageGuard.reset();
     final requestId = ++_requestId;
 
     state = const AsyncValue.loading();
@@ -74,22 +95,127 @@ class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
 
   Future<void> reload() => fetch(_currentKeyword, forceRefresh: true);
 
+  Future<void> loadMore() async {
+    if (_pageGuard.hasPageInFlight ||
+        _isLoadingMore ||
+        !hasMoreJournals) {
+      return;
+    }
+
+    final current = state.value;
+    if (current == null || state.isLoading) return;
+
+    final nextPage = _journalPage + 1;
+    if (!_pageGuard.tryAcquire(nextPage)) return;
+
+    _isLoadingMore = true;
+    final requestId = _requestId;
+
+    state = AsyncValue.data(
+      current.copyWith(journals: [...current.journals]),
+    );
+
+    try {
+      final pageResult = _currentKeyword.isEmpty
+          ? await _fetchGlobalLeaderboardPage(nextPage)
+          : await _fetchTopicLeaderboardPage(nextPage);
+
+      if (requestId != _requestId) return;
+
+      final mergedJournals = _mergeJournals(current.journals, pageResult.journals);
+      _journalPage = nextPage;
+      _totalJournalCount = pageResult.totalCount;
+
+      state = AsyncValue.data(
+        current.copyWith(journals: mergedJournals),
+      );
+    } catch (_) {
+      // Keep current data on pagination errors.
+    } finally {
+      if (requestId == _requestId) {
+        _pageGuard.release(nextPage);
+        _isLoadingMore = false;
+        final latest = state.value;
+        if (latest != null) {
+          state = AsyncValue.data(
+            latest.copyWith(journals: [...latest.journals]),
+          );
+        }
+      }
+    }
+  }
+
+  Future<LeadingJournalsLeaderboardPage> _fetchGlobalLeaderboardPage(
+    int page,
+  ) async {
+    final result = await ref.read(leadingJournalRepositoryProvider).getLeaderboardPage(
+          page: page,
+          perPage: _pageSize,
+        );
+
+    return result.fold(
+      (failure) => throw failure,
+      (page) => page,
+    );
+  }
+
+  Future<LeadingJournalsLeaderboardPage> _fetchTopicLeaderboardPage(
+    int page,
+  ) async {
+    final result = await ref.read(getTopJournalsUseCaseProvider)(
+      GetTopJournalsParams(
+        keyword: _currentKeyword,
+        limit: _pageSize,
+        page: page,
+        topicId: _resolvedTopicId,
+      ),
+    );
+
+    return result.fold(
+      (failure) => throw failure,
+      (page) {
+        _resolvedTopicId ??= page.topicId;
+        return LeadingJournalsLeaderboardPage(
+          journals: page.journals
+              .map(
+                (journal) => LeadingJournalEntity(
+                  id: journal.id,
+                  name: journal.displayName,
+                  articleCount: journal.worksCount,
+                  totalCitations: journal.citedByCount,
+                  hIndex: journal.hIndex.toDouble(),
+                ),
+              )
+              .toList(),
+          totalCount: page.totalCount,
+        );
+      },
+    );
+  }
+
   Future<LeadingJournalsOverview> _loadGlobal() async {
     final result = await ref.read(getLeadingJournalsUseCaseProvider)();
     return result.fold(
       (failure) => throw failure,
-      (overview) => overview,
+      (overview) {
+        _totalJournalCount = overview.insights.activeJournals;
+        return overview;
+      },
     );
   }
 
   Future<LeadingJournalsOverview> _loadForKeyword(String keyword) async {
     final result = await ref.read(getTopJournalsUseCaseProvider)(
-      GetTopJournalsParams(keyword: keyword, limit: 25),
+      GetTopJournalsParams(keyword: keyword, limit: _pageSize, page: 1),
     );
 
     return result.fold(
       (failure) => throw failure,
-      (page) => _overviewFromTopicJournals(page),
+      (page) {
+        _resolvedTopicId = page.topicId;
+        _totalJournalCount = page.totalCount;
+        return _overviewFromTopicJournals(page);
+      },
     );
   }
 
@@ -135,6 +261,22 @@ class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
       ),
       quartileDistribution: _quartileFromHIndex(leading),
     );
+  }
+
+  List<LeadingJournalEntity> _mergeJournals(
+    List<LeadingJournalEntity> existing,
+    List<LeadingJournalEntity> incoming,
+  ) {
+    final seen = existing.map((journal) => journal.id).toSet();
+    final merged = List<LeadingJournalEntity>.from(existing);
+
+    for (final journal in incoming) {
+      if (seen.add(journal.id)) {
+        merged.add(journal);
+      }
+    }
+
+    return merged;
   }
 
   JournalQuartileDistribution _quartileFromHIndex(

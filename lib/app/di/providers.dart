@@ -28,6 +28,7 @@ import 'package:synapse/domain/usecases/author/get_top_authors_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_by_id_usecase.dart';
 import 'package:synapse/domain/usecases/publication/get_publication_trend_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_journal_by_id_usecase.dart';
+import 'package:synapse/domain/usecases/journal/get_journal_publications_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_leading_journals_usecase.dart';
 import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
 import 'package:synapse/domain/usecases/keyword/get_keyword_by_id_usecase.dart';
@@ -118,7 +119,10 @@ final getPublicationTrendUseCaseProvider = Provider<GetPublicationTrendUseCase>(
 );
 
 final getTopAuthorsUseCaseProvider = Provider<GetTopAuthorsUseCase>((ref) {
-  return GetTopAuthorsUseCase(ref.watch(authorRepositoryProvider));
+  return GetTopAuthorsUseCase(
+    ref.watch(topicRepositoryProvider),
+    ref.watch(authorRepositoryProvider),
+  );
 });
 
 final getAuthorProfileUseCaseProvider = Provider<GetAuthorProfileUseCase>((ref) {
@@ -150,6 +154,13 @@ final getTopJournalsUseCaseProvider = Provider<GetTopJournalsUseCase>((ref) {
 
 final getJournalByIdUseCaseProvider = Provider<GetJournalByIdUseCase>((ref) {
   return GetJournalByIdUseCase(ref.watch(journalRepositoryProvider));
+});
+
+final getJournalPublicationsUseCaseProvider =
+    Provider<GetJournalPublicationsUseCase>((ref) {
+  return GetJournalPublicationsUseCase(
+    ref.watch(publicationRepositoryProvider),
+  );
 });
 
 final getLeadingJournalsUseCaseProvider =

@@ -42,14 +42,16 @@ class JournalRepositoryImpl
   Future<Either<Failure, TopJournalsPage>> getTopJournalsByTopicId(
     String topicId, {
     int limit = 10,
+    int page = 1,
   }) async {
     return deduplicate(
-      cacheKey: 'top_journals_${topicId}_$limit',
+      cacheKey: 'top_journals_${topicId}_${page}_$limit',
       action: () async {
         try {
           final response = await _apiJournal.getJournals(
             filter: topicId.isNotEmpty ? 'topics.id:$topicId' : null,
             sort: 'works_count:desc',
+            page: page,
             perPage: limit,
             select: 'id,display_name,works_count,cited_by_count,summary_stats',
           );
@@ -65,6 +67,7 @@ class JournalRepositoryImpl
             TopJournalsPage(
               journals: journals,
               totalCount: totalCount,
+              topicId: topicId.isNotEmpty ? topicId : null,
             ),
           );
         } catch (e) {

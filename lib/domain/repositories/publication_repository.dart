@@ -10,6 +10,12 @@ abstract class PublicationRepository {
     int limit = 25,
   });
 
+  Future<Either<Failure, List<PublicationEntity>>> getPublicationsByJournalId(
+    String journalId, {
+    int page = 1,
+    int limit = 25,
+  });
+
   Future<Either<Failure, Map<int, int>>> getPublicationTrendByTopicId(
     String? topicId,
   );

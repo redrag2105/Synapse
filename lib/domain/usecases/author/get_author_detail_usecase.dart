@@ -38,7 +38,10 @@ class GetAuthorDetailUseCase
         );
 
         return worksResult.map(
-          (works) => AuthorDetailEntity(profile: profile, topicWorks: works),
+          (page) => AuthorDetailEntity(
+            profile: profile,
+            topicWorks: page.items,
+          ),
         );
       },
     );

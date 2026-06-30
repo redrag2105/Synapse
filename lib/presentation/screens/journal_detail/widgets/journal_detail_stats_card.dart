@@ -12,7 +12,7 @@ class JournalDetailStatsCard extends StatelessWidget {
   static const double layoutHeight = 78;
 
   /// Extra space for the drop shadow so parent clips don't cut it off.
-  static const double shadowBleed = 14;
+  static const double shadowBleed = 25;
 
   static double get totalHeight => layoutHeight + shadowBleed;
 
@@ -61,10 +61,7 @@ class JournalDetailStatsCard extends StatelessWidget {
             ),
             _divider(),
             Expanded(
-              child: _HeaderStat(
-                label: 'H-Index',
-                value: '$hIndex',
-              ),
+              child: _HeaderStat(label: 'H-Index', value: '$hIndex'),
             ),
           ],
         ),
@@ -73,11 +70,7 @@ class JournalDetailStatsCard extends StatelessWidget {
   }
 
   Widget _divider() {
-    return Container(
-      width: 1,
-      height: 34,
-      color: AppColors.borderGray,
-    );
+    return Container(width: 1, height: 34, color: AppColors.borderGray);
   }
 }
 

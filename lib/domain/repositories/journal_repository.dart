@@ -9,5 +9,6 @@ abstract class JournalRepository {
   Future<Either<Failure, TopJournalsPage>> getTopJournalsByTopicId(
     String topicId, {
     int limit = 10,
+    int page = 1,
   });
 }

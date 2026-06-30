@@ -6,6 +6,9 @@ class AppColors {
   static const Color brandBlue600 = Color(0xFF005C8A);
   static const Color brandBlue500 = Color(0xFF0073A1);
 
+  /// Muted warm gold
+  static const Color brandGold = Color(0xFFB58F3F);
+
   // Text Colors
   static const Color textPrimary = Color(0xFF222222);
   static const Color textSecondary = Color(0xFF555555);

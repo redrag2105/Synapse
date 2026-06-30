@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "759130064327",
+    "project_id": "synapse-prm393",
+    "storage_bucket": "synapse-prm393.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759130064327:android:e8ea6d4b240ebfde3945e2",
+        "android_client_info": {
+          "package_name": "com.example.synapse"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "759130064327-ihu7h4ho4hcv1uednumdi889vjurd28f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.synapse",
+            "certificate_hash": "a6f9103315a127cd5aa9e0d7106f89f508c6e549"
+          }
+        },
+        {
+          "client_id": "759130064327-r0nh3sc1413tmgl0vdsuu4bv2nqk4o21.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0AwPjtAs_V1Fhsz_1n0iHLF_n22i9nIU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759130064327-r0nh3sc1413tmgl0vdsuu4bv2nqk4o21.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

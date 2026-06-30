@@ -166,8 +166,8 @@ class _ResearchInsightsFabState extends State<ResearchInsightsFab>
                       height: _fabSize,
                       child: FloatingActionButton(
                         onPressed: _toggle,
-                        backgroundColor: AppColors.brandBlue900,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.brandGold,
+                        foregroundColor: const Color(0xFFE6E6E7),
                         elevation: 6,
                         shape: const CircleBorder(),
                         child: AnimatedSwitcher(

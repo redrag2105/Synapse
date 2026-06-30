@@ -85,6 +85,40 @@ class LeadingJournalRepositoryImpl
     );
   }
 
+  @override
+  Future<Either<Failure, LeadingJournalsLeaderboardPage>> getLeaderboardPage({
+    required int page,
+    int perPage = 25,
+  }) async {
+    return deduplicate(
+      cacheKey: 'leading_journals_leaderboard_${page}_$perPage',
+      action: () async {
+        try {
+          final response = await _apiJournal.getJournals(
+            filter: _journalFilter,
+            sort: 'summary_stats.h_index:desc',
+            page: page,
+            perPage: perPage,
+            select: _selectFields,
+          );
+
+          final journals = _parseResults(response);
+          final totalCount =
+              response['meta']?['count'] as int? ?? journals.length;
+
+          return Right(
+            LeadingJournalsLeaderboardPage(
+              journals: journals,
+              totalCount: totalCount,
+            ),
+          );
+        } catch (e) {
+          return Left(ErrorHandler.handle(e));
+        }
+      },
+    );
+  }
+
   List<LeadingJournalEntity> _parseResults(Map<String, dynamic> response) {
     final results = response['results'] as List? ?? [];
     return results

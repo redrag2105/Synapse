@@ -4,4 +4,9 @@ import 'package:synapse/domain/entities/leading_journal_entity.dart';
 
 abstract class LeadingJournalRepository {
   Future<Either<Failure, LeadingJournalsOverview>> getLeadingJournals();
+
+  Future<Either<Failure, LeadingJournalsLeaderboardPage>> getLeaderboardPage({
+    required int page,
+    int perPage = 25,
+  });
 }

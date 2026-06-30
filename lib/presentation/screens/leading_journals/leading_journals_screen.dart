@@ -13,6 +13,7 @@ import 'package:synapse/presentation/screens/leading_journals/widgets/journal_su
 import 'package:synapse/presentation/screens/leading_journals/widgets/journal_top_bar_chart.dart';
 import 'package:synapse/presentation/screens/leading_journals/widgets/leading_journals_skeleton.dart';
 import 'package:synapse/presentation/utils/shell_keyword_intent_listener.dart';
+import 'package:synapse/presentation/widgets/pagination_footer.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
@@ -30,6 +31,8 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
   static const String _globalSubtitle = 'Top sources by citation impact';
 
   late final AnimationController _focusAnimController;
+  late final ScrollController _scrollController;
+  final ScrollPaginationLock _paginationLock = ScrollPaginationLock();
   String _currentSubtitle = _globalSubtitle;
   bool _isSearchBarFocused = false;
 
@@ -40,6 +43,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    _scrollController = ScrollController()..addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       scheduleShellKeywordIntentConsumption(
@@ -50,16 +54,33 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
       if (ref.read(shellKeywordIntentProvider) != null) return;
 
       final notifier = ref.read(leadingJournalsControllerProvider.notifier);
-      final lastQuery = notifier.lastQuery;
-      notifier.fetch(lastQuery);
+      notifier.fetch(notifier.lastQuery);
     });
   }
 
   @override
   void dispose() {
     ref.read(tabBarSuppressedProvider.notifier).setSuppressed(false);
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _focusAnimController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final metrics = _scrollController.position;
+    _paginationLock.onScroll(metrics);
+
+    final notifier = ref.read(leadingJournalsControllerProvider.notifier);
+
+    _paginationLock.tryLoad(
+      metrics: metrics,
+      canLoadMore: notifier.hasMoreJournals,
+      isLoadingMore: notifier.isLoadingMore,
+      onLoadMore: notifier.loadMore,
+    );
   }
 
   void _applyKeyword(String keyword) {
@@ -74,6 +95,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
     _focusAnimController.reverse();
     FocusManager.instance.primaryFocus?.unfocus();
 
+    _paginationLock.reset();
     ref
         .read(leadingJournalsControllerProvider.notifier)
         .fetch(isGlobal ? '' : query, forceRefresh: true);
@@ -98,6 +120,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
     );
 
     final state = ref.watch(leadingJournalsControllerProvider);
+    final journalsNotifier = ref.read(leadingJournalsControllerProvider.notifier);
     final topPadding = MediaQuery.paddingOf(context).top;
     final isGlobal = _currentSubtitle == _globalSubtitle;
     final initialSearchQuery = isGlobal ? '' : _currentSubtitle;
@@ -106,6 +129,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
       body: Stack(
         children: [
           CustomScrollView(
+            controller: _scrollController,
             physics: const BouncingScrollPhysics(),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
@@ -131,29 +155,83 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
                   );
                 },
               ),
-              SliverToBoxAdapter(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 800),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  child: state.when(
-                    loading: () => const LeadingJournalsSkeleton(
+              ...state.when(
+                loading: () => [
+                  const SliverToBoxAdapter(
+                    child: LeadingJournalsSkeleton(
                       key: ValueKey('leading_journals_loading'),
                     ),
-                    error: (error, _) => _buildErrorState(error),
-                    data: (overview) {
-                      if (overview.journals.isEmpty) {
-                        return _buildEmptyState(
-                          key: const ValueKey('leading_journals_empty'),
-                        );
-                      }
-                      return _buildContent(
-                        key: const ValueKey('leading_journals_data'),
-                        overview: overview,
-                      );
-                    },
                   ),
-                ),
+                ],
+                error: (error, _) => [
+                  SliverToBoxAdapter(child: _buildErrorState(error)),
+                ],
+                data: (overview) {
+                  if (overview.journals.isEmpty) {
+                    return [
+                      SliverToBoxAdapter(
+                        child: _buildEmptyState(
+                          key: const ValueKey('leading_journals_empty'),
+                        ),
+                      ),
+                    ];
+                  }
+
+                  final journals = overview.journals;
+                  final hasMore = journalsNotifier.hasMoreJournals;
+                  final isLoadingMore = journalsNotifier.isLoadingMore;
+
+                  return [
+                    SliverToBoxAdapter(
+                      key: const ValueKey('leading_journals_overview'),
+                      child: _buildOverviewSection(
+                        overview: overview,
+                        isGlobalView: journalsNotifier.isGlobalView,
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                        child: Text(
+                          'Detailed Leaderboard',
+                          style: AppTextStyles.h3.copyWith(
+                            fontSize: 16,
+                            color: AppColors.brandBlue900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverList.separated(
+                      itemCount: journals.length + (hasMore ? 1 : 0),
+                      separatorBuilder: (context, index) {
+                        if (index >= journals.length - 1) {
+                          return const SizedBox.shrink();
+                        }
+                        return const Divider(
+                          height: 1,
+                          color: AppColors.borderGray,
+                        );
+                      },
+                      itemBuilder: (context, index) {
+                        if (index == journals.length) {
+                          return PaginationFooter(
+                            isLoading: isLoadingMore,
+                            hasMore: hasMore,
+                          );
+                        }
+
+                        final journal = journals[index];
+                        return JournalLeaderboardTile(
+                          key: ValueKey(journal.id),
+                          rank: index + 1,
+                          journal: journal,
+                          onTap: () =>
+                              context.push(AppRoutes.journalDetail(journal.id)),
+                        );
+                      },
+                    ),
+                  ];
+                },
               ),
               const SliverToBoxAdapter(child: TabBarContentPadding()),
             ],
@@ -183,6 +261,39 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewSection({
+    required LeadingJournalsOverview overview,
+    required bool isGlobalView,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Overview'),
+          JournalSummarySection(
+            insights: overview.insights,
+            activeJournalsSubtitle: isGlobalView
+                ? 'tracked in dataset'
+                : 'matching this topic',
+          ),
+          const SizedBox(height: 18),
+          RepaintBoundary(
+            child: JournalQuartileDistributionChart(
+              distribution: overview.quartileDistribution,
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildSectionTitle('Journal Rankings'),
+          const SizedBox(height: 12),
+          RepaintBoundary(
+            child: JournalTopBarChart(journals: overview.journals),
           ),
         ],
       ),
@@ -220,47 +331,6 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
           style: AppTextStyles.metadata,
           textAlign: TextAlign.center,
         ),
-      ),
-    );
-  }
-
-  Widget _buildContent({
-    required Key key,
-    required LeadingJournalsOverview overview,
-  }) {
-    return Padding(
-      key: key,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Overview'),
-          JournalSummarySection(
-            insights: overview.insights,
-            activeJournalsSubtitle:
-                ref
-                    .read(leadingJournalsControllerProvider.notifier)
-                    .isGlobalView
-                ? 'tracked in dataset'
-                : 'matching this topic',
-          ),
-          const SizedBox(height: 18),
-          JournalQuartileDistributionChart(
-            distribution: overview.quartileDistribution,
-          ),
-          const SizedBox(height: 24),
-          _buildSectionTitle('Journal Rankings'),
-          const SizedBox(height: 12),
-          JournalTopBarChart(journals: overview.journals),
-          const SizedBox(height: 24),
-          _buildSectionTitle('Detailed Leaderboard'),
-          const SizedBox(height: 12),
-          JournalLeaderboard(
-            journals: overview.journals,
-            onJournalTap: (journal) =>
-                context.push(AppRoutes.journalDetail(journal.id)),
-          ),
-        ],
       ),
     );
   }

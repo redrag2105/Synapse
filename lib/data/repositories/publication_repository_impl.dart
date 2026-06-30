@@ -15,6 +15,12 @@ class PublicationRepositoryImpl
 
   PublicationRepositoryImpl(this._apiPublication);
 
+  static const _workSelect =
+      'id,title,display_name,doi,publication_year,publication_date,cited_by_count,primary_location,authorships,type,open_access';
+
+  static String _cleanId(String id) =>
+      id.contains('/') ? id.split('/').last : id;
+
   @override
   Future<Either<Failure, List<PublicationEntity>>> getPublicationsByTopicId(
     String topicId, {
@@ -30,8 +36,40 @@ class PublicationRepositoryImpl
             page: page,
             perPage: limit,
             sort: 'cited_by_count:desc',
-            select:
-                'id,title,display_name,doi,publication_year,publication_date,cited_by_count,primary_location,authorships,type,open_access',
+            select: _workSelect,
+          );
+
+          final results = response['results'] as List;
+          final publications = results
+              .map((e) => PublicationModel.fromJson(e))
+              .toList();
+
+          return Right(publications);
+        } catch (e) {
+          return Left(ErrorHandler.handle(e));
+        }
+      },
+    );
+  }
+
+  @override
+  Future<Either<Failure, List<PublicationEntity>>> getPublicationsByJournalId(
+    String journalId, {
+    int page = 1,
+    int limit = 25,
+  }) async {
+    final cleanId = _cleanId(journalId);
+
+    return deduplicate(
+      cacheKey: 'pubs_journal_${cleanId}_${page}_$limit',
+      action: () async {
+        try {
+          final response = await _apiPublication.getWorks(
+            filter: 'primary_location.source.id:$cleanId',
+            page: page,
+            perPage: limit,
+            sort: 'cited_by_count:desc',
+            select: _workSelect,
           );
 
           final results = response['results'] as List;

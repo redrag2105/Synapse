@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/presentation/widgets/user_avatar.dart';
 
 class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double topPadding;
   final VoidCallback? onProfileTap;
+  final bool isSignedIn;
+  final String? profilePhotoUrl;
+  final String? profileDisplayName;
+  final String? profileEmail;
 
   DiscoverHeaderDelegate({
     required this.topPadding,
     this.onProfileTap,
+    this.isSignedIn = false,
+    this.profilePhotoUrl,
+    this.profileDisplayName,
+    this.profileEmail,
   });
 
   @override
@@ -20,7 +29,11 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant DiscoverHeaderDelegate oldDelegate) {
     return oldDelegate.topPadding != topPadding ||
-        oldDelegate.onProfileTap != onProfileTap;
+        oldDelegate.onProfileTap != onProfileTap ||
+        oldDelegate.isSignedIn != isSignedIn ||
+        oldDelegate.profilePhotoUrl != profilePhotoUrl ||
+        oldDelegate.profileDisplayName != profileDisplayName ||
+        oldDelegate.profileEmail != profileEmail;
   }
 
   @override
@@ -146,15 +159,33 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
                   opacity: collapsedOpacity,
                   child: IgnorePointer(
                     ignoring: collapsedOpacity < 0.5,
-                    child: IconButton(
-                      tooltip: 'My Profile',
-                      icon: const Icon(
-                        Icons.person_outline_rounded,
-                        color: Colors.white70,
-                        size: 24,
-                      ),
-                      onPressed: onProfileTap,
-                    ),
+                    child: isSignedIn
+                        ? IconButton(
+                            tooltip: 'My Profile',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                            ),
+                            icon: UserAvatar(
+                              photoUrl: profilePhotoUrl,
+                              displayName: profileDisplayName,
+                              email: profileEmail,
+                              radius: 18,
+                              backgroundColor: AppColors.brandBlue600,
+                              borderColor: Colors.white.withValues(alpha: 0.55),
+                            ),
+                            onPressed: onProfileTap,
+                          )
+                        : IconButton(
+                            tooltip: 'My Profile',
+                            icon: const Icon(
+                              Icons.person_outline_rounded,
+                              color: Colors.white70,
+                              size: 24,
+                            ),
+                            onPressed: onProfileTap,
+                          ),
                   ),
                 ),
               ),

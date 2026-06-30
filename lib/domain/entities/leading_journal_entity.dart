@@ -58,4 +58,27 @@ class LeadingJournalsOverview {
     required this.insights,
     required this.quartileDistribution,
   });
+
+  LeadingJournalsOverview copyWith({
+    List<LeadingJournalEntity>? journals,
+    LeadingJournalInsights? insights,
+    JournalQuartileDistribution? quartileDistribution,
+  }) {
+    return LeadingJournalsOverview(
+      journals: journals ?? this.journals,
+      insights: insights ?? this.insights,
+      quartileDistribution:
+          quartileDistribution ?? this.quartileDistribution,
+    );
+  }
+}
+
+class LeadingJournalsLeaderboardPage {
+  final List<LeadingJournalEntity> journals;
+  final int totalCount;
+
+  const LeadingJournalsLeaderboardPage({
+    required this.journals,
+    required this.totalCount,
+  });
 }

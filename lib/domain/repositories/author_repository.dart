@@ -10,7 +10,9 @@ import 'package:synapse/domain/entities/global_author_insights_entity.dart';
 abstract class AuthorRepository {
   Future<Either<Failure, PagedResult<AuthorEntity>>> getTopAuthorsByKeyword(
     String keyword, {
+    int page = 1,
     int limit = PaginatedListState.defaultPageSize,
+    String? topicId,
   });
 
   Future<Either<Failure, AuthorEntity>> getAuthorById(
@@ -18,7 +20,7 @@ abstract class AuthorRepository {
     bool includeTopics = false,
   });
 
-  Future<Either<Failure, List<PublicationEntity>>> getAuthorWorksByTopic(
+  Future<Either<Failure, PagedResult<PublicationEntity>>> getAuthorWorksByTopic(
     String authorId,
     String keyword, {
     int page = 1,

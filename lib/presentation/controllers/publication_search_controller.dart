@@ -6,6 +6,7 @@ import 'package:synapse/app/utils/app_logger.dart';
 import 'package:synapse/domain/entities/publication_entity.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
 import 'package:synapse/domain/usecases/publication/search_publications_usecase.dart';
+import 'package:synapse/presentation/widgets/pagination_footer.dart';
 
 class SearchCacheData {
   final List<PublicationEntity> publications;
@@ -39,8 +40,10 @@ class PublicationSearchController
   int _currentPage = 1;
   bool _hasReachedMax = false;
   bool _isFetchingNext = false;
+  final InFlightPageGuard _pageGuard = InFlightPageGuard();
 
   bool get hasReachedMax => _hasReachedMax;
+  bool get isFetchingNext => _isFetchingNext || _pageGuard.hasPageInFlight;
 
   TopicEntity? _lastTopic;
   bool _isSearchByTopic = false;
@@ -98,6 +101,7 @@ class PublicationSearchController
 
     _currentPage = 1;
     _hasReachedMax = false;
+    _pageGuard.reset();
     state = const AsyncValue.loading();
 
     final stopwatch = Stopwatch()..start();
@@ -166,6 +170,7 @@ class PublicationSearchController
 
     _currentPage = 1;
     _hasReachedMax = false;
+    _pageGuard.reset();
     state = const AsyncValue.loading();
 
     final stopwatch = Stopwatch()..start();
@@ -209,76 +214,88 @@ class PublicationSearchController
   }
 
   Future<void> loadMore() async {
-    if (_isFetchingNext || _hasReachedMax || state.value == null) return;
+    if (_pageGuard.hasPageInFlight ||
+        _isFetchingNext ||
+        _hasReachedMax ||
+        state.value == null) {
+      return;
+    }
     if (lastQuery.trim().isEmpty || state.value!.isEmpty) return;
 
-    _isFetchingNext = true;
     final nextPage = _currentPage + 1;
+    if (!_pageGuard.tryAcquire(nextPage)) return;
+
+    _isFetchingNext = true;
     final requestId = _currentRequestId;
 
     AppLogger.i('🔄 Đang tải thêm trang $nextPage...');
 
-    if (_isSearchByTopic && _lastTopic != null) {
-      final topicId = _lastTopic!.id.split('/').last;
-      final pubRepo = ref.read(publicationRepositoryProvider);
+    try {
+      if (_isSearchByTopic && _lastTopic != null) {
+        final topicId = _lastTopic!.id.split('/').last;
+        final pubRepo = ref.read(publicationRepositoryProvider);
 
-      final result = await pubRepo.getPublicationsByTopicId(
-        topicId,
-        page: nextPage,
-      );
+        final result = await pubRepo.getPublicationsByTopicId(
+          topicId,
+          page: nextPage,
+        );
 
-      result.fold(
-        (failure) => AppLogger.w(
-          '⚠️ Lỗi khi tải thêm trang $nextPage: ${failure.message}',
-        ),
-        (newPubs) {
-          if (requestId != _currentRequestId) return;
+        result.fold(
+          (failure) => AppLogger.w(
+            '⚠️ Lỗi khi tải thêm trang $nextPage: ${failure.message}',
+          ),
+          (newPubs) {
+            if (requestId != _currentRequestId) return;
 
-          _hasReachedMax = newPubs.length < 25;
-          _currentPage = nextPage;
+            _hasReachedMax = newPubs.length < 25;
+            _currentPage = nextPage;
 
-          final updatedList = [...state.value!, ...newPubs];
-          _cache[topicId] = SearchCacheData(
-            publications: updatedList,
-            page: _currentPage,
-            hasReachedMax: _hasReachedMax,
-          );
+            final updatedList = [...state.value!, ...newPubs];
+            _cache[topicId] = SearchCacheData(
+              publications: updatedList,
+              page: _currentPage,
+              hasReachedMax: _hasReachedMax,
+            );
 
-          state = AsyncValue.data(updatedList);
-          AppLogger.i('✅ Đã tải và nối thêm ${newPubs.length} bài báo');
-        },
-      );
-    } else {
-      final normalizedKeyword = lastQuery.trim().toLowerCase();
-      final useCase = ref.read(searchPublicationsUseCaseProvider);
+            state = AsyncValue.data(updatedList);
+            AppLogger.i('✅ Đã tải và nối thêm ${newPubs.length} bài báo');
+          },
+        );
+      } else {
+        final normalizedKeyword = lastQuery.trim().toLowerCase();
+        final useCase = ref.read(searchPublicationsUseCaseProvider);
 
-      final result = await useCase(
-        SearchPublicationsParams(keyword: normalizedKeyword, page: nextPage),
-      );
+        final result = await useCase(
+          SearchPublicationsParams(keyword: normalizedKeyword, page: nextPage),
+        );
 
-      result.fold(
-        (failure) => AppLogger.w(
-          '⚠️ Lỗi khi tải thêm trang $nextPage: ${failure.message}',
-        ),
-        (newPubs) {
-          if (requestId != _currentRequestId) return;
+        result.fold(
+          (failure) => AppLogger.w(
+            '⚠️ Lỗi khi tải thêm trang $nextPage: ${failure.message}',
+          ),
+          (newPubs) {
+            if (requestId != _currentRequestId) return;
 
-          _hasReachedMax = newPubs.length < 25;
-          _currentPage = nextPage;
+            _hasReachedMax = newPubs.length < 25;
+            _currentPage = nextPage;
 
-          final updatedList = [...state.value!, ...newPubs];
-          _cache[normalizedKeyword] = SearchCacheData(
-            publications: updatedList,
-            page: _currentPage,
-            hasReachedMax: _hasReachedMax,
-          );
+            final updatedList = [...state.value!, ...newPubs];
+            _cache[normalizedKeyword] = SearchCacheData(
+              publications: updatedList,
+              page: _currentPage,
+              hasReachedMax: _hasReachedMax,
+            );
 
-          state = AsyncValue.data(updatedList);
-          AppLogger.i('✅ Đã tải và nối thêm ${newPubs.length} bài báo');
-        },
-      );
+            state = AsyncValue.data(updatedList);
+            AppLogger.i('✅ Đã tải và nối thêm ${newPubs.length} bài báo');
+          },
+        );
+      }
+    } finally {
+      if (requestId == _currentRequestId) {
+        _pageGuard.release(nextPage);
+        _isFetchingNext = false;
+      }
     }
-
-    _isFetchingNext = false;
   }
 }

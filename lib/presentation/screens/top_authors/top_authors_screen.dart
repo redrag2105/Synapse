@@ -30,8 +30,8 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
 
   late final AnimationController _focusAnimController;
   late final ScrollController _scrollController;
+  final ScrollPaginationLock _paginationLock = ScrollPaginationLock();
   String _currentTitle = _globalTitle;
-  bool _isPaging = false;
   bool _isSearchBarFocused = false;
 
   @override
@@ -75,6 +75,7 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
     _focusAnimController.reverse();
     FocusManager.instance.primaryFocus?.unfocus();
 
+    _paginationLock.reset();
     ref.read(topAuthorsControllerProvider.notifier).fetchTopAuthors(
           isGlobal ? '' : query,
           forceRefresh: true,
@@ -84,23 +85,27 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
   @override
   void dispose() {
     ref.read(tabBarSuppressedProvider.notifier).setSuppressed(false);
+    _scrollController.removeListener(_onScroll);
     _focusAnimController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (!_scrollController.hasClients || _isPaging) return;
+    if (!_scrollController.hasClients) return;
 
-    final position = _scrollController.position;
-    if (!position.hasContentDimensions) return;
-    if (position.maxScrollExtent <= 0) return;
-    if (position.pixels < position.maxScrollExtent - 200) return;
+    final metrics = _scrollController.position;
+    _paginationLock.onScroll(metrics);
 
-    _isPaging = true;
-    ref.read(topAuthorsControllerProvider.notifier).loadMore().whenComplete(() {
-      _isPaging = false;
-    });
+    final notifier = ref.read(topAuthorsControllerProvider.notifier);
+    final paginated = ref.read(topAuthorsControllerProvider).value?.authors;
+
+    _paginationLock.tryLoad(
+      metrics: metrics,
+      canLoadMore: paginated?.hasMore ?? false,
+      isLoadingMore: notifier.isLoadingMore,
+      onLoadMore: notifier.loadMore,
+    );
   }
 
   void _onFocusChanged(bool hasFocus) {
@@ -125,6 +130,7 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
     _focusAnimController.reverse();
     FocusManager.instance.primaryFocus?.unfocus();
 
+    _paginationLock.reset();
     ref
         .read(topAuthorsControllerProvider.notifier)
         .fetchTopAuthors(isGlobal ? '' : query);
@@ -260,8 +266,16 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
                       SliverPadding(
                         padding: const EdgeInsets.only(top: 12),
                         sliver: SliverList.builder(
-                          itemCount: authors.length,
+                          itemCount:
+                              authors.length + (paginated.hasMore ? 1 : 0),
                           itemBuilder: (context, index) {
+                            if (index == authors.length) {
+                              return PaginationFooter(
+                                isLoading: paginated.isLoadingMore,
+                                hasMore: paginated.hasMore,
+                              );
+                            }
+
                             final author = authors[index];
                             return AuthorRankTile(
                               rank: index + 1,
@@ -272,12 +286,6 @@ class _TopAuthorsScreenState extends ConsumerState<TopAuthorsScreen>
                         ),
                       ),
 
-                      SliverToBoxAdapter(
-                        child: PaginationFooter(
-                          isLoading: paginated.isLoadingMore,
-                          hasMore: paginated.hasMore,
-                        ),
-                      ),
                       const SliverToBoxAdapter(child: TabBarContentPadding()),
                     ];
                   },

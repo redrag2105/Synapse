@@ -10,6 +10,7 @@ import 'package:synapse/presentation/screens/publication_search/widgets/publicat
 import 'package:synapse/presentation/screens/publication_search/widgets/publication_card_skeleton.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/research_insights_fab.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/search_empty_state.dart';
+import 'package:synapse/presentation/widgets/pagination_footer.dart';
 import 'package:synapse/presentation/widgets/universal_header_delegate.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
@@ -29,6 +30,7 @@ class _PublicationSearchScreenState
   late final AnimationController _focusAnimController;
 
   final ScrollController _scrollController = ScrollController();
+  final ScrollPaginationLock _paginationLock = ScrollPaginationLock();
 
   @override
   bool get wantKeepAlive => true;
@@ -45,17 +47,26 @@ class _PublicationSearchScreenState
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      final controller = ref.read(publicationSearchControllerProvider.notifier);
-      final searchState = ref.read(publicationSearchControllerProvider);
+    if (!_scrollController.hasClients) return;
 
-      if (controller.lastQuery.isNotEmpty &&
-          searchState.hasValue &&
-          searchState.requireValue.isNotEmpty) {
-        controller.loadMore();
-      }
+    final metrics = _scrollController.position;
+    _paginationLock.onScroll(metrics);
+
+    final controller = ref.read(publicationSearchControllerProvider.notifier);
+    final searchState = ref.read(publicationSearchControllerProvider);
+
+    if (controller.lastQuery.isEmpty ||
+        !searchState.hasValue ||
+        searchState.requireValue.isEmpty) {
+      return;
     }
+
+    _paginationLock.tryLoad(
+      metrics: metrics,
+      canLoadMore: !controller.hasReachedMax,
+      isLoadingMore: controller.isFetchingNext,
+      onLoadMore: controller.loadMore,
+    );
   }
 
   @override
@@ -124,6 +135,7 @@ class _PublicationSearchScreenState
                         focusProgress: _focusAnimController.value,
                         onFocusChanged: _onFocusChanged,
                         onSubmitted: (query) {
+                          _paginationLock.reset();
                           ref
                               .read(
                                 publicationSearchControllerProvider.notifier,
@@ -131,6 +143,7 @@ class _PublicationSearchScreenState
                               .search(query);
                         },
                         onTopicSelected: (topic) {
+                          _paginationLock.reset();
                           ref
                               .read(
                                 publicationSearchControllerProvider.notifier,
@@ -200,18 +213,7 @@ class _PublicationSearchScreenState
                           itemCount: itemCount,
                           itemBuilder: (context, index) {
                             if (index == publications.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16.0),
-                                child: Center(
-                                  child: SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 3.6,
-                                    ),
-                                  ),
-                                ),
-                              );
+                              return const PaginationLoadingIndicator();
                             }
 
                             return PublicationCard(

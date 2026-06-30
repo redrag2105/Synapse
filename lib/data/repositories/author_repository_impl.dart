@@ -28,41 +28,60 @@ class AuthorRepositoryImpl
   @override
   Future<Either<Failure, PagedResult<AuthorEntity>>> getTopAuthorsByKeyword(
     String keyword, {
+    int page = 1,
     int limit = PaginatedListState.defaultPageSize,
+    String? topicId,
   }) async {
-    final apiLimit = limit > 200 ? 200 : limit;
-
     return deduplicate(
-      cacheKey: 'top_authors_${keyword}_$apiLimit',
+      cacheKey: 'top_authors_${keyword}_${topicId ?? ''}_${page}_$limit',
       action: () async {
         try {
-          final currentYear = DateTime.now().year;
-          final filter = keyword.isEmpty
-              ? 'publication_year:${currentYear - 2}-$currentYear'
-              : null;
+          const select =
+              'id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions';
 
-          final response = await _apiPublication.getWorks(
-            search: keyword.isNotEmpty ? keyword : null,
-            filter: filter,
-            groupBy: 'authorships.author.id',
-            perPage: apiLimit,
-          );
+          final Map<String, dynamic> response;
 
-          final groups = response['group_by'] as List? ?? [];
-          final authors = <AuthorEntity>[];
-
-          for (final group in groups) {
-            if (group is! Map<String, dynamic>) continue;
-            try {
-              authors.add(AuthorModel.fromGroupByJson(group));
-            } catch (_) {
-              continue;
-            }
+          if (keyword.isEmpty) {
+            response = await _apiAuthor.getAuthors(
+              sort: 'summary_stats.h_index:desc',
+              page: page,
+              perPage: limit,
+              select: select,
+            );
+          } else if (topicId != null && topicId.isNotEmpty) {
+            response = await _apiAuthor.getAuthors(
+              filter: 'topics.id:$topicId',
+              sort: 'works_count:desc',
+              page: page,
+              perPage: limit,
+              select: select,
+            );
+          } else {
+            response = await _apiAuthor.getAuthors(
+              search: keyword,
+              sort: 'works_count:desc',
+              page: page,
+              perPage: limit,
+              select: select,
+            );
           }
 
-          authors.sort((a, b) => b.worksCount.compareTo(a.worksCount));
+          final results = response['results'] as List? ?? [];
+          final authors = results
+              .whereType<Map<String, dynamic>>()
+              .map(AuthorModel.fromJson)
+              .toList();
+          final totalCount =
+              response['meta']?['count'] as int? ?? authors.length;
 
-          return Right(PagedResult(items: authors, hasMore: false));
+          return Right(
+            PagedResult(
+              items: authors,
+              hasMore: page * limit < totalCount,
+              totalCount: totalCount,
+              topicId: topicId,
+            ),
+          );
         } catch (e) {
           return Left(ErrorHandler.handle(e));
         }
@@ -99,7 +118,7 @@ class AuthorRepositoryImpl
   }
 
   @override
-  Future<Either<Failure, List<PublicationEntity>>> getAuthorWorksByTopic(
+  Future<Either<Failure, PagedResult<PublicationEntity>>> getAuthorWorksByTopic(
     String authorId,
     String keyword, {
     int page = 1,
@@ -125,8 +144,16 @@ class AuthorRepositoryImpl
           final publications = results
               .map((e) => PublicationModel.fromJson(e as Map<String, dynamic>))
               .toList();
+          final totalCount =
+              response['meta']?['count'] as int? ?? publications.length;
 
-          return Right(publications);
+          return Right(
+            PagedResult(
+              items: publications,
+              hasMore: publications.length >= limit,
+              totalCount: totalCount,
+            ),
+          );
         } catch (e) {
           return Left(ErrorHandler.handle(e));
         }

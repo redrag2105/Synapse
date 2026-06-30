@@ -10,6 +10,7 @@ import 'package:synapse/domain/entities/global_author_insights_entity.dart';
 import 'package:synapse/domain/usecases/author/get_author_topic_matrix_usecase.dart';
 import 'package:synapse/domain/usecases/author/get_global_author_insights_usecase.dart';
 import 'package:synapse/domain/usecases/author/get_top_authors_usecase.dart';
+import 'package:synapse/presentation/widgets/pagination_footer.dart';
 
 typedef TopAuthorsListState = PaginatedListState<AuthorEntity>;
 
@@ -56,43 +57,26 @@ final topAuthorsControllerProvider =
 
 class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
   static const int _pageSize = PaginatedListState.defaultPageSize;
-  static const int _apiBatchSize = 200;
 
   String _currentKeyword = '';
   String lastQuery = '';
   int _requestId = 0;
   int _matrixRequestId = 0;
-  bool _isLoadingMoreInFlight = false;
-
-  List<AuthorEntity> _authorBuffer = [];
+  int _currentPage = 1;
+  String? _resolvedTopicId;
+  final InFlightPageGuard _pageGuard = InFlightPageGuard();
 
   String get currentKeyword => _currentKeyword;
 
   bool get isGlobalView => _currentKeyword.isEmpty;
 
+  bool get isLoadingMore =>
+      (state.value?.authors.isLoadingMore ?? false) ||
+      _pageGuard.hasPageInFlight;
+
   @override
   FutureOr<TopAuthorsViewState> build() {
     return const TopAuthorsViewState();
-  }
-
-  List<AuthorEntity> _mergeAuthors(
-    List<AuthorEntity> existing,
-    List<AuthorEntity> incoming,
-  ) {
-    final byId = <String, AuthorEntity>{
-      for (final author in existing) author.id: author,
-    };
-
-    for (final author in incoming) {
-      byId[author.id] = author;
-    }
-
-    return byId.values.toList()
-      ..sort((a, b) => b.worksCount.compareTo(a.worksCount));
-  }
-
-  bool _hasMoreToShow(int displayedCount) {
-    return displayedCount < _authorBuffer.length;
   }
 
   Future<void> fetchTopAuthors(
@@ -103,10 +87,8 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
   }) async {
     final trimmed = keyword.trim();
     final isGlobal = trimmed.isEmpty;
-    final displayLimit = limit ?? _pageSize;
-    final apiLimit = limit ?? _apiBatchSize;
+    final pageSize = limit ?? _pageSize;
 
-    // Tránh fetch lại liên tục nếu đang load hoặc đã có data của chính keyword này
     if (!forceRefresh && _currentKeyword == trimmed) {
       if (state.isLoading ||
           (state.hasValue &&
@@ -118,7 +100,9 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
     }
 
     _currentKeyword = trimmed;
-    _authorBuffer = [];
+    _currentPage = 1;
+    _resolvedTopicId = null;
+    _pageGuard.reset();
 
     if (saveHistory) {
       lastQuery = isGlobal ? '' : trimmed;
@@ -126,7 +110,6 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
 
     final requestId = ++_requestId;
 
-    // Khởi chạy fetch Insights ngay lập tức song song với Authors để giảm thời gian chờ
     Future<Either<Failure, GlobalAuthorInsights>>? insightsFuture;
     if (limit == null) {
       insightsFuture = ref.read(getGlobalAuthorInsightsUseCaseProvider)(
@@ -137,7 +120,11 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
     state = const AsyncValue.loading();
 
     final result = await ref.read(getTopAuthorsUseCaseProvider)(
-      GetTopAuthorsParams(keyword: _currentKeyword, limit: apiLimit),
+      GetTopAuthorsParams(
+        keyword: _currentKeyword,
+        limit: pageSize,
+        page: 1,
+      ),
     );
 
     if (requestId != _requestId) return;
@@ -145,25 +132,21 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
     result.fold(
       (failure) => state = AsyncValue.error(failure, StackTrace.current),
       (paged) {
-        _authorBuffer = _mergeAuthors([], paged.items);
+        _resolvedTopicId = paged.topicId;
 
-        final visible = _authorBuffer.take(displayLimit).toList();
-
-        // Khởi tạo state với dữ liệu Authors và bật sẵn cờ loading cho các phần phụ
         state = AsyncValue.data(
           TopAuthorsViewState(
             authors: TopAuthorsListState(
-              items: visible,
+              items: paged.items,
               currentPage: 1,
-              hasMore: limit == null && _hasMoreToShow(visible.length),
+              hasMore: limit == null && paged.hasMore,
             ),
             isLoadingInsights: limit == null,
-            isLoadingMatrix: limit == null && isGlobal && visible.isNotEmpty,
+            isLoadingMatrix: limit == null && isGlobal && paged.items.isNotEmpty,
           ),
         );
 
         if (limit == null) {
-          // 1. Xử lý kết quả Insights đã chạy song song ở trên
           if (insightsFuture != null) {
             insightsFuture.then((insightsResult) {
               if (requestId != _requestId) return;
@@ -184,9 +167,8 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
             });
           }
 
-          // 2. Bắt đầu fetch Matrix (bắt buộc phải đợi Authors vì cần ID)
-          if (isGlobal && visible.isNotEmpty) {
-            unawaited(_loadTopicMatrix(visible));
+          if (isGlobal && paged.items.isNotEmpty) {
+            unawaited(_loadTopicMatrix(paged.items));
           }
         }
       },
@@ -194,53 +176,72 @@ class TopAuthorsController extends AsyncNotifier<TopAuthorsViewState> {
   }
 
   Future<void> loadMore() async {
-    if (_isLoadingMoreInFlight) return;
-
     final current = state.value;
     final authorsState = current?.authors;
     if (current == null ||
         authorsState == null ||
         !authorsState.hasMore ||
         authorsState.isLoadingMore ||
+        _pageGuard.hasPageInFlight ||
         state.isLoading) {
       return;
     }
 
-    _isLoadingMoreInFlight = true;
-    final requestId = ++_requestId;
-    final displayedCount = authorsState.items.length;
+    final nextPage = _currentPage + 1;
+    if (!_pageGuard.tryAcquire(nextPage)) return;
 
     state = AsyncValue.data(
       current.copyWith(authors: authorsState.copyWith(isLoadingMore: true)),
     );
 
+    final requestId = _requestId;
+
     try {
-      if (displayedCount < _authorBuffer.length) {
-        if (requestId != _requestId) return;
-
-        final nextCount = displayedCount + _pageSize;
-        final visible = _authorBuffer.take(nextCount).toList();
-
-        state = AsyncValue.data(
-          current.copyWith(
-            authors: authorsState.copyWith(
-              items: visible,
-              currentPage: authorsState.currentPage + 1,
-              hasMore: _hasMoreToShow(visible.length),
-              isLoadingMore: false,
-            ),
-          ),
-        );
-        return;
-      }
-
-      state = AsyncValue.data(
-        current.copyWith(
-          authors: authorsState.copyWith(hasMore: false, isLoadingMore: false),
+      final result = await ref.read(getTopAuthorsUseCaseProvider)(
+        GetTopAuthorsParams(
+          keyword: _currentKeyword,
+          limit: _pageSize,
+          page: nextPage,
+          topicId: _resolvedTopicId,
         ),
       );
+
+      if (requestId != _requestId) return;
+
+      result.fold(
+        (failure) {
+          final latest = state.value;
+          if (latest == null) return;
+
+          state = AsyncValue.data(
+            latest.copyWith(
+              authors: latest.authors.copyWith(isLoadingMore: false),
+            ),
+          );
+        },
+        (paged) {
+          _resolvedTopicId ??= paged.topicId;
+          _currentPage = nextPage;
+
+          final latest = state.value;
+          if (latest == null) return;
+
+          state = AsyncValue.data(
+            latest.copyWith(
+              authors: latest.authors.copyWith(
+                items: [...latest.authors.items, ...paged.items],
+                currentPage: nextPage,
+                hasMore: paged.hasMore,
+                isLoadingMore: false,
+              ),
+            ),
+          );
+        },
+      );
     } finally {
-      _isLoadingMoreInFlight = false;
+      if (requestId == _requestId) {
+        _pageGuard.release(nextPage);
+      }
     }
   }
 

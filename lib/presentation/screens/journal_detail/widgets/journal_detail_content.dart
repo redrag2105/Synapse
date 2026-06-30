@@ -21,11 +21,12 @@ class JournalDetailContent extends StatelessWidget {
     }.toList();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GridView.count(
+            padding: EdgeInsets.zero,
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -64,8 +65,9 @@ class JournalDetailContent extends StatelessWidget {
                 subtitle: journal.isInDoaj ? 'DOAJ listed' : 'access model',
                 icon: Icons.lock_open_outlined,
                 color: journal.isOa ? AppColors.success : AppColors.textLight,
-                subtitleColor:
-                    journal.isOa ? AppColors.success : AppColors.textLight,
+                subtitleColor: journal.isOa
+                    ? AppColors.success
+                    : AppColors.textLight,
               ),
             ],
           ),
@@ -101,10 +103,7 @@ class JournalDetailContent extends StatelessWidget {
           if (journal.homepageUrl != null &&
               journal.homepageUrl!.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _LinkCard(
-              label: 'Journal Homepage',
-              url: journal.homepageUrl!,
-            ),
+            _LinkCard(label: 'Journal Homepage', url: journal.homepageUrl!),
           ],
           if (journal.openAlexUrl != null) ...[
             const SizedBox(height: 12),

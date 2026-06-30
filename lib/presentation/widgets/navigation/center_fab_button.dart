@@ -121,9 +121,12 @@ class _CenterFabOrbState extends State<CenterFabOrb>
                   shape: BoxShape.circle,
                   gradient: isFocused
                       ? const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF3C86DB), AppColors.brandBlue900],
+                          begin: Alignment.bottomLeft,
+                          end: Alignment.topRight,
+                          colors: [
+                            AppColors.brandBlue600,
+                            AppColors.brandBlue900,
+                          ],
                         )
                       : const LinearGradient(
                           begin: Alignment.bottomRight,

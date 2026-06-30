@@ -4,6 +4,7 @@ import 'package:synapse/app/di/providers.dart';
 import 'package:synapse/app/types/paginated_list_state.dart';
 import 'package:synapse/domain/entities/author_detail_view_state.dart';
 import 'package:synapse/domain/usecases/author/get_author_works_usecase.dart';
+import 'package:synapse/presentation/widgets/pagination_footer.dart';
 
 typedef AuthorDetailArgs = ({String authorId, String keyword});
 
@@ -18,7 +19,7 @@ class AuthorDetailController extends AsyncNotifier<AuthorDetailViewState> {
   final AuthorDetailArgs arg;
   static const int _pageSize = PaginatedListState.defaultPageSize;
 
-  int _worksRequestId = 0;
+  final InFlightPageGuard _pageGuard = InFlightPageGuard();
 
   @override
   FutureOr<AuthorDetailViewState> build() async {
@@ -40,11 +41,13 @@ class AuthorDetailController extends AsyncNotifier<AuthorDetailViewState> {
 
         return worksResult.fold(
           (failure) => throw failure,
-          (works) => AuthorDetailViewState(
+          (worksPage) => AuthorDetailViewState(
             profile: profile,
-            works: works,
+            works: worksPage.items,
+            totalWorksCount:
+                worksPage.totalCount ?? profile.worksCount,
             worksPage: 1,
-            hasMoreWorks: works.length >= _pageSize,
+            hasMoreWorks: worksPage.hasMore,
           ),
         );
       },
@@ -55,40 +58,51 @@ class AuthorDetailController extends AsyncNotifier<AuthorDetailViewState> {
     final current = state.value;
     if (current == null ||
         !current.hasMoreWorks ||
-        current.isLoadingMoreWorks) {
+        current.isLoadingMoreWorks ||
+        _pageGuard.hasPageInFlight) {
       return;
     }
 
-    final requestId = ++_worksRequestId;
     final nextPage = current.worksPage + 1;
+    if (!_pageGuard.tryAcquire(nextPage)) return;
 
     state = AsyncValue.data(current.copyWith(isLoadingMoreWorks: true));
 
-    final result = await ref.read(getAuthorWorksUseCaseProvider)(
-      GetAuthorWorksParams(
-        authorId: arg.authorId,
-        keyword: arg.keyword,
-        page: nextPage,
-        limit: _pageSize,
-      ),
-    );
+    try {
+      final result = await ref.read(getAuthorWorksUseCaseProvider)(
+        GetAuthorWorksParams(
+          authorId: arg.authorId,
+          keyword: arg.keyword,
+          page: nextPage,
+          limit: _pageSize,
+        ),
+      );
 
-    if (requestId != _worksRequestId) return;
+      result.fold(
+        (failure) {
+          final latest = state.value;
+          if (latest == null) return;
 
-    result.fold(
-      (failure) {
-        state = AsyncValue.data(current.copyWith(isLoadingMoreWorks: false));
-      },
-      (works) {
-        state = AsyncValue.data(
-          current.copyWith(
-            works: [...current.works, ...works],
-            worksPage: nextPage,
-            hasMoreWorks: works.length >= _pageSize,
-            isLoadingMoreWorks: false,
-          ),
-        );
-      },
-    );
+          state = AsyncValue.data(
+            latest.copyWith(isLoadingMoreWorks: false),
+          );
+        },
+        (worksPage) {
+          final latest = state.value;
+          if (latest == null) return;
+
+          state = AsyncValue.data(
+            latest.copyWith(
+              works: [...latest.works, ...worksPage.items],
+              worksPage: nextPage,
+              hasMoreWorks: worksPage.hasMore,
+              isLoadingMoreWorks: false,
+            ),
+          );
+        },
+      );
+    } finally {
+      _pageGuard.release(nextPage);
+    }
   }
 }

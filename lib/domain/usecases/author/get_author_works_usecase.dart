@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:synapse/app/core/usecases/param_usecase.dart';
 import 'package:synapse/app/types/failure.dart';
+import 'package:synapse/app/types/paged_result.dart';
 import 'package:synapse/app/types/paginated_list_state.dart';
 import 'package:synapse/domain/entities/author_entity.dart';
 import 'package:synapse/domain/entities/publication_entity.dart';
@@ -21,13 +22,14 @@ class GetAuthorWorksParams {
 }
 
 class GetAuthorWorksUseCase
-    implements ParamUseCase<List<PublicationEntity>, GetAuthorWorksParams> {
+    implements
+        ParamUseCase<PagedResult<PublicationEntity>, GetAuthorWorksParams> {
   final AuthorRepository _authorRepository;
 
   GetAuthorWorksUseCase(this._authorRepository);
 
   @override
-  Future<Either<Failure, List<PublicationEntity>>> call(
+  Future<Either<Failure, PagedResult<PublicationEntity>>> call(
     GetAuthorWorksParams params,
   ) async {
     return _authorRepository.getAuthorWorksByTopic(

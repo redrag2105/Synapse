@@ -5,6 +5,7 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/domain/entities/keyword_entity.dart';
+import 'package:synapse/presentation/controllers/auth_providers.dart';
 import 'package:synapse/presentation/controllers/most_frequent_keywords_controller.dart';
 import 'package:synapse/presentation/controllers/trending_keywords_controller.dart';
 import 'package:synapse/presentation/screens/discover/utils/keyword_navigation.dart';
@@ -26,6 +27,7 @@ class DiscoverScreen extends ConsumerWidget {
 
     final frequentState = ref.watch(mostFrequentKeywordsControllerProvider);
     final trendingState = ref.watch(trendingKeywordsControllerProvider);
+    final user = ref.watch(currentUserProvider);
 
     final topKeyword = frequentState.maybeWhen(
       data: (list) => list.isNotEmpty ? list.first : null,
@@ -56,6 +58,10 @@ class DiscoverScreen extends ConsumerWidget {
             delegate: DiscoverHeaderDelegate(
               topPadding: topPadding,
               onProfileTap: () => context.push(AppRoutes.profile),
+              isSignedIn: user != null,
+              profilePhotoUrl: user?.photoURL,
+              profileDisplayName: user?.displayName,
+              profileEmail: user?.email,
             ),
           ),
 

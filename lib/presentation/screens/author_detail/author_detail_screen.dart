@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/presentation/controllers/author_detail_controller.dart';
 import 'package:synapse/presentation/screens/author_detail/widgets/author_detail_content.dart';
+import 'package:synapse/presentation/screens/author_detail/widgets/author_detail_header_delegate.dart';
 import 'package:synapse/presentation/screens/author_detail/widgets/author_detail_skeleton.dart';
+import 'package:synapse/presentation/widgets/pagination_footer.dart';
 
 class AuthorDetailScreen extends ConsumerStatefulWidget {
   final String authorId;
@@ -22,8 +23,8 @@ class AuthorDetailScreen extends ConsumerStatefulWidget {
 
 class _AuthorDetailScreenState extends ConsumerState<AuthorDetailScreen> {
   late final ScrollController _scrollController;
+  final ScrollPaginationLock _paginationLock = ScrollPaginationLock();
   late final AuthorDetailArgs _args;
-  bool _isPaging = false;
 
   @override
   void initState() {
@@ -34,25 +35,27 @@ class _AuthorDetailScreenState extends ConsumerState<AuthorDetailScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (!_scrollController.hasClients || _isPaging) return;
+    if (!_scrollController.hasClients) return;
 
-    final position = _scrollController.position;
-    if (!position.hasContentDimensions) return;
-    if (position.maxScrollExtent <= 0) return;
-    if (position.pixels < position.maxScrollExtent - 200) return;
+    final metrics = _scrollController.position;
+    _paginationLock.onScroll(metrics);
 
-    _isPaging = true;
-    ref
-        .read(authorDetailControllerProvider(_args).notifier)
-        .loadMoreWorks()
-        .whenComplete(() {
-      _isPaging = false;
-    });
+    final detailState = ref.read(authorDetailControllerProvider(_args)).value;
+
+    _paginationLock.tryLoad(
+      metrics: metrics,
+      canLoadMore: detailState?.hasMoreWorks ?? false,
+      isLoadingMore: detailState?.isLoadingMoreWorks ?? false,
+      onLoadMore: () => ref
+          .read(authorDetailControllerProvider(_args).notifier)
+          .loadMoreWorks(),
+    );
   }
 
   @override
@@ -60,7 +63,7 @@ class _AuthorDetailScreenState extends ConsumerState<AuthorDetailScreen> {
     final detailState = ref.watch(authorDetailControllerProvider(_args));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surfaceGray,
       body: SafeArea(
         top: false,
         bottom: true,
@@ -95,48 +98,53 @@ class _AuthorDetailScreenState extends ConsumerState<AuthorDetailScreen> {
                       size: 48,
                     ),
                     const SizedBox(height: 16),
-                    Text('Lỗi: ${error.toString()}'),
+                    Text('Error: ${error.toString()}'),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () =>
                           ref.invalidate(authorDetailControllerProvider(_args)),
-                      child: const Text('Thử lại'),
+                      child: const Text('Retry'),
                     ),
                   ],
                 ),
               ),
             ),
-            data: (detail) => CustomScrollView(
-              key: const ValueKey('author_detail_data'),
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverAppBar(
-                  pinned: true,
-                  backgroundColor: AppColors.brandBlue900,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  scrolledUnderElevation: 0,
-                  leading: IconButton(
-                    icon: const Icon(CupertinoIcons.back),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
+            data: (detail) {
+              final topPadding = MediaQuery.paddingOf(context).top;
+
+              return ColoredBox(
+                key: const ValueKey('author_detail_data'),
+                color: AppColors.background,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: AuthorDetailHeaderDelegate(
+                        topPadding: topPadding,
+                        displayName: detail.profile.displayName,
+                        institution: detail.profile.lastKnownInstitutionName,
+                        orcid: detail.profile.orcid,
+                        topicLabel: widget.topic,
+                        worksCount: detail.profile.worksCount,
+                        citedByCount: detail.profile.citedByCount,
+                        hIndex: detail.profile.hIndex,
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: AuthorWorksSection(
+                        works: detail.works,
+                        totalWorksCount: detail.totalWorksCount,
+                        topicLabel: widget.topic,
+                        isLoadingMore: detail.isLoadingMoreWorks,
+                        hasMore: detail.hasMoreWorks,
+                      ),
+                    ),
+                  ],
                 ),
-                SliverToBoxAdapter(
-                  child: AuthorProfileHeader(
-                    profile: detail.profile,
-                    topicLabel: widget.topic,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: AuthorWorksSection(
-                    works: detail.works,
-                    isLoadingMore: detail.isLoadingMoreWorks,
-                    hasMore: detail.hasMoreWorks,
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
