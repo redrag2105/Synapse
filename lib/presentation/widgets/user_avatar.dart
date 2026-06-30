@@ -8,6 +8,7 @@ class UserAvatar extends StatelessWidget {
   final String? email;
   final double radius;
   final Color backgroundColor;
+  final Color initialsColor;
   final Color? borderColor;
   final double borderWidth;
 
@@ -18,6 +19,7 @@ class UserAvatar extends StatelessWidget {
     this.email,
     this.radius = 20,
     this.backgroundColor = AppColors.brandBlue700,
+    this.initialsColor = Colors.white,
     this.borderColor,
     this.borderWidth = 1.5,
   });
@@ -43,7 +45,7 @@ class UserAvatar extends StatelessWidget {
             ? Text(
                 initials,
                 style: AppTextStyles.button.copyWith(
-                  color: Colors.white,
+                  color: initialsColor,
                   fontSize: radius * 0.72,
                 ),
               )

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:synapse/app/di/providers.dart';
 import 'package:synapse/app/utils/app_logger.dart';
 import 'package:synapse/domain/entities/keyword_entity.dart';
+import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
 import 'package:synapse/domain/usecases/publication/get_most_frequent_keywords_usecase.dart';
 
 final mostFrequentKeywordsControllerProvider =
@@ -21,12 +22,22 @@ class MostFrequentKeywordsController extends AsyncNotifier<List<KeywordEntity>> 
   FutureOr<List<KeywordEntity>> build() async {
     _keepAliveTemporarily();
 
+    final limit = ref.watch(appRemoteConfigProvider).maxKeywordsDisplay;
+
+    ref.listen(appRemoteConfigProvider, (previous, next) {
+      if (previous != null &&
+          previous.maxKeywordsDisplay != next.maxKeywordsDisplay) {
+        _cache = null;
+        ref.invalidateSelf();
+      }
+    });
+
     ref.onDispose(() {
       _timer?.cancel();
       _cache = null;
     });
 
-    return _fetchMostFrequent();
+    return _fetchMostFrequent(limit);
   }
 
   void _keepAliveTemporarily() {
@@ -38,7 +49,7 @@ class MostFrequentKeywordsController extends AsyncNotifier<List<KeywordEntity>> 
     });
   }
 
-  Future<List<KeywordEntity>> _fetchMostFrequent() async {
+  Future<List<KeywordEntity>> _fetchMostFrequent(int limit) async {
     _keepAliveTemporarily();
 
     if (_cache != null) {
@@ -46,7 +57,7 @@ class MostFrequentKeywordsController extends AsyncNotifier<List<KeywordEntity>> 
     }
 
     final useCase = ref.read(getMostFrequentKeywordsUseCaseProvider);
-    final result = await useCase(const GetMostFrequentKeywordsParams(limit: 10));
+    final result = await useCase(GetMostFrequentKeywordsParams(limit: limit));
 
     return result.fold(
       (failure) => throw Exception(failure.message),

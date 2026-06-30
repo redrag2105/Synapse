@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:synapse/presentation/screens/auth/login_screen.dart';
 import 'package:synapse/presentation/screens/author_detail/author_detail_screen.dart';
 import 'package:synapse/presentation/screens/discover/discover_screen.dart';
 import 'package:synapse/presentation/screens/journal_detail/journal_detail_screen.dart';
@@ -24,7 +23,6 @@ class AppRoutes {
   static const String authors = '/authors';
   static const String journals = '/journals';
   static const String profile = '/profile';
-  static const String login = '/login';
 
   static String journalDetail(String journalId) =>
       '$journals/${Uri.encodeComponent(journalId)}';
@@ -152,11 +150,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.profile,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ProfileScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.login,
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const LoginScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

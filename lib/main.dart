@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
+import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
+import 'package:synapse/presentation/controllers/notification_inbox_controller.dart';
 import 'package:synapse/firebase_options.dart';
 
 void main() async {
@@ -32,11 +34,25 @@ void main() async {
   runApp(const ProviderScope(child: SynapseApp()));
 }
 
-class SynapseApp extends ConsumerWidget {
+class SynapseApp extends ConsumerStatefulWidget {
   const SynapseApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SynapseApp> createState() => _SynapseAppState();
+}
+
+class _SynapseAppState extends ConsumerState<SynapseApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(appRemoteConfigProvider.notifier).load();
+      ref.read(notificationInboxProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(goRouterProvider);
 
     return MaterialApp.router(

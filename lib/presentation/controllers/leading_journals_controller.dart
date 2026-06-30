@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/di/providers.dart';
 import 'package:synapse/app/types/failure.dart';
-import 'package:synapse/app/types/paginated_list_state.dart';
 import 'package:synapse/domain/entities/top_journals_page.dart';
+import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
 import 'package:synapse/domain/entities/leading_journal_entity.dart';
 import 'package:synapse/domain/usecases/journal/get_top_journals_usecase.dart';
 import 'package:synapse/presentation/widgets/pagination_footer.dart';
@@ -14,8 +14,6 @@ final leadingJournalsControllerProvider = AsyncNotifierProvider<
 );
 
 class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
-  static const int _pageSize = PaginatedListState.defaultPageSize;
-
   static const LeadingJournalsOverview emptyOverview = LeadingJournalsOverview(
     journals: [],
     insights: LeadingJournalInsights(
@@ -55,8 +53,19 @@ class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
     return current.journals.length < _totalJournalCount;
   }
 
+  int get _pageSize => ref.read(appRemoteConfigProvider).maxJournalsDisplay;
+
   @override
   FutureOr<LeadingJournalsOverview> build() {
+    ref.listen(appRemoteConfigProvider, (previous, next) {
+      if (previous != null &&
+          previous.maxJournalsDisplay != next.maxJournalsDisplay &&
+          state.hasValue &&
+          state.requireValue.journals.isNotEmpty) {
+        unawaited(fetch(_currentKeyword, forceRefresh: true));
+      }
+    });
+
     return emptyOverview;
   }
 
