@@ -80,8 +80,17 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
   }
 
   Future<void> exportReport() async {
-    final user = _activeUser;
-    if (user == null || state.isExportingReport) return;
+    final user = _activeUser ?? FirebaseAuth.instance.currentUser;
+    if (user == null || state.isExportingReport) {
+      if (user == null) {
+        state = state.copyWith(
+          statusMessage: 'Sign in required to export a report.',
+        );
+      }
+      return;
+    }
+
+    _activeUser ??= user;
 
     final config = ref.read(appRemoteConfigProvider);
     final inbox = ref.read(notificationInboxProvider);

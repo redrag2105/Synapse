@@ -21,9 +21,10 @@
 1. Launch the app on Home.
 2. Open the **Search** tab (center FAB).
 3. Enter topic `machine learning` in the search field.
-4. Submit search (keyboard search action).
-5. Wait for API results.
-6. Verify at least one publication card is shown.
+4. Wait for autocomplete suggestions (OpenAlex topics).
+5. Tap the **first** suggestion to search by topic ID (not a plain keyword).
+6. Wait for API results.
+7. Verify at least one publication card is shown.
 
 ### Command
 
@@ -36,7 +37,7 @@ patrol test -t patrol_tests/publication_test.dart --dart-define-from-file=.env -
 | Step | Assertion |
 |------|-----------|
 | Search tab | **Search Publications** title visible |
-| After submit | `first_publication_card` key visible |
+| After autocomplete tap | `first_publication_card` key visible |
 | Results | `first_publication_card` key visible (at least one result) |
 
 Patrol reports **PASSED**.
@@ -52,13 +53,14 @@ Patrol reports **PASSED**.
 | Key | Purpose |
 |-----|---------|
 | `bottom_nav_search` | Open Search tab |
-| `publication_search_field` | Enter search keyword |
-| `publication_results_list` | Results loaded |
+| `publication_search_field` | Enter search text |
+| `publication_topic_autocomplete_first` | First OpenAlex topic suggestion |
 | `first_publication_card` | At least one result present |
 
 ### Notes
 
-- Default keyword is `machine learning` (stable, high-result query).
+- Default query text is `machine learning`; the test selects the first autocomplete topic (real OpenAlex topic entity).
+- Autocomplete debounce is ~400 ms; allow up to ~20 s for suggestions on slow networks.
 - Loading can take up to ~45 seconds on slow networks.
 
 ### Common failures
@@ -66,6 +68,7 @@ Patrol reports **PASSED**.
 | Symptom | Likely cause |
 |---------|----------------|
 | Timeout on `first_publication_card` | No network, API error, empty results, or results off-screen |
+| Timeout on `publication_topic_autocomplete_first` | Topic hints API failed or query returned no suggestions |
 | `Lỗi:` with HTTP 503 on screen | Missing `API_KEY` in Patrol build — use `--dart-define-from-file=.env` |
 | Search field not found | Search tab not opened |
 | Empty results | API down — try another keyword in the test |

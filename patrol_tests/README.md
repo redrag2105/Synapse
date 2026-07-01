@@ -9,11 +9,15 @@ patrol_tests/
 ├── README.md                 ← this file (setup & index)
 ├── docs/                     ← one doc per test file
 │   ├── authentication_test.md
-│   └── publication_test.md
+│   ├── publication_test.md
+│   ├── journal_test.md
+│   └── export_test.md
 ├── helpers/
 │   └── patrol_helpers.dart
 ├── authentication_test.dart
-└── publication_test.dart
+├── publication_test.dart
+├── journal_test.dart
+└── export_test.dart
 ```
 
 UI targets use keys from `lib/app/config/test_keys.dart`.
@@ -58,6 +62,8 @@ patrol test --dart-define-from-file=.env
 # Single file
 patrol test -t patrol_tests/authentication_test.dart --dart-define-from-file=.env
 patrol test -t patrol_tests/publication_test.dart --dart-define-from-file=.env
+patrol test -t patrol_tests/journal_test.dart --dart-define-from-file=.env
+patrol test -t patrol_tests/export_test.dart --dart-define-from-file=.env --dart-define=PATROL_GOOGLE_EMAIL=you@gmail.com
 ```
 
 Per-test commands, scenarios, and expected results are in [`docs/`](docs/).
@@ -68,10 +74,10 @@ Per-test commands, scenarios, and expected results are in [`docs/`](docs/).
 |-----------|-----|------------|--------|
 | `authentication_test.dart` | [docs/authentication_test.md](docs/authentication_test.md) | 1 – Google Sign-In | Implemented |
 | `publication_test.dart` | [docs/publication_test.md](docs/publication_test.md) | 2 – Topic Search, 3 – Publication Details | Implemented |
-| `journal_test.dart` | — | 4 – Journals Navigation, 5 – Journal Details | Not implemented |
+| `journal_test.dart` | [docs/journal_test.md](docs/journal_test.md) | 4 – Journals Navigation, 5 – Journal Details | Implemented |
 | `keyword_test.dart` | — | 6 – Keywords Navigation, 7 – Keyword Details | Not implemented |
 | `profile_test.dart` | — | 8 – Profile Navigation | Not implemented |
-| `export_test.dart` | — | 9 – PDF Export | Not implemented |
+| `export_test.dart` | [docs/export_test.md](docs/export_test.md) | 9 – PDF Export | Implemented |
 | `remote_config_test.dart` | — | 10 – Remote Config | Not implemented |
 | `authentication_test.dart` (logout) | — | 11 – Logout | Not implemented |
 

@@ -56,7 +56,7 @@ class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
   int get _pageSize => ref.read(appRemoteConfigProvider).maxJournalsDisplay;
 
   @override
-  FutureOr<LeadingJournalsOverview> build() {
+  Future<LeadingJournalsOverview> build() async {
     ref.listen(appRemoteConfigProvider, (previous, next) {
       if (previous != null &&
           previous.maxJournalsDisplay != next.maxJournalsDisplay &&
@@ -66,7 +66,9 @@ class LeadingJournalsController extends AsyncNotifier<LeadingJournalsOverview> {
       }
     });
 
-    return emptyOverview;
+    _currentKeyword = '';
+    lastQuery = '';
+    return _loadGlobal();
   }
 
   Future<void> fetch(String keyword, {bool forceRefresh = false}) async {

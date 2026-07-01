@@ -145,12 +145,30 @@ Future<void> searchPublications(
     final field = find.byKey(TestKeys.publicationSearchField);
     await $.tester.tap(field);
     await $.tester.enterText(field, keyword);
-    await $.tester.testTextInput.receiveAction(TextInputAction.search);
-    await $.pumpAndSettle(timeout: const Duration(seconds: 30));
+    await $.pumpAndSettle(timeout: const Duration(seconds: 5));
 
     try {
+      await $(TestKeys.publicationTopicAutocompleteFirst).waitUntilVisible(
+        timeout: const Duration(seconds: 20),
+      );
+      await $(TestKeys.publicationTopicAutocompleteFirst).tap();
+
+      final resultsDeadline = DateTime.now().add(const Duration(seconds: 45));
+      while (DateTime.now().isBefore(resultsDeadline)) {
+        if (find.byKey(TestKeys.firstPublicationCard).evaluate().isNotEmpty) {
+          await $(TestKeys.firstPublicationCard).scrollTo();
+          try {
+            await $(TestKeys.firstPublicationCard).waitUntilVisible(
+              timeout: const Duration(seconds: 2),
+            );
+            return;
+          } on Object catch (_) {}
+        }
+        await $.pump(const Duration(milliseconds: 300));
+      }
+
       await $(TestKeys.firstPublicationCard).waitUntilVisible(
-        timeout: const Duration(seconds: 30),
+        timeout: const Duration(seconds: 5),
       );
       return;
     } on Object catch (_) {
@@ -168,5 +186,121 @@ Future<void> openFirstPublication(PatrolIntegrationTester $) async {
 
   await $(TestKeys.publicationDetailScreen).waitUntilVisible(
     timeout: const Duration(seconds: 20),
+  );
+}
+
+Future<void> tapBottomNavJournals(PatrolIntegrationTester $) async {
+  await $(TestKeys.bottomNavJournals).tap();
+  await $.pumpAndSettle(timeout: const Duration(seconds: 5));
+}
+
+Future<void> waitForJournalsHome(PatrolIntegrationTester $) async {
+  await $(TestKeys.journalsScreen).waitUntilVisible(
+    timeout: const Duration(seconds: 20),
+  );
+
+  final deadline = DateTime.now().add(const Duration(seconds: 60));
+  var loaded = false;
+  while (DateTime.now().isBefore(deadline)) {
+    await $.pump(const Duration(milliseconds: 500));
+
+    if (find.byKey(const ValueKey('leading_journals_error')).evaluate().isNotEmpty) {
+      final retry = find.widgetWithText(ElevatedButton, 'Retry');
+      if (retry.evaluate().isNotEmpty) {
+        await $.tester.tap(retry);
+        await $.pump(const Duration(milliseconds: 500));
+        continue;
+      }
+      fail(
+        'Journals API error. Run with --dart-define-from-file=.env for API_KEY.',
+      );
+    }
+
+    if (find.byKey(const ValueKey('leading_journals_empty')).evaluate().isNotEmpty) {
+      fail('Journals loaded but no results for this query.');
+    }
+
+    if (find.byKey(TestKeys.firstJournalTile).evaluate().isNotEmpty ||
+        find.byKey(TestKeys.journalsOverview).evaluate().isNotEmpty) {
+      loaded = true;
+      break;
+    }
+  }
+
+  if (!loaded) {
+    fail(
+      'Journals list did not load in time. '
+      'Check network and pass --dart-define-from-file=.env.',
+    );
+  }
+
+  if (find.byKey(TestKeys.journalsStatistics).evaluate().isNotEmpty) {
+    await $(TestKeys.journalsStatistics).scrollTo();
+    await $(TestKeys.journalsStatistics).waitUntilVisible(
+      timeout: const Duration(seconds: 10),
+    );
+  }
+
+  await $('Detailed Leaderboard').scrollTo();
+  await $('Detailed Leaderboard').waitUntilVisible(
+    timeout: const Duration(seconds: 10),
+  );
+
+  await $(TestKeys.firstJournalTile).scrollTo();
+  await $(TestKeys.firstJournalTile).waitUntilVisible(
+    timeout: const Duration(seconds: 10),
+  );
+}
+
+Future<void> openFirstJournal(PatrolIntegrationTester $) async {
+  await $(TestKeys.firstJournalTile).scrollTo().tap();
+  await $.pumpAndSettle(timeout: const Duration(seconds: 10));
+
+  await $(TestKeys.journalDetailScreen).scrollTo();
+  await $(TestKeys.journalDetailScreen).waitUntilVisible(
+    timeout: const Duration(seconds: 20),
+  );
+}
+
+Future<void> signInAndOpenProfile(PatrolIntegrationTester $) async {
+  await openProfileFromDiscover($);
+
+  if (!Platform.isMacOS) {
+    await completeGoogleSignIn($);
+    await $(TestKeys.signedInProfile).waitUntilVisible(
+      timeout: const Duration(seconds: 30),
+    );
+    await $.pumpAndSettle(timeout: const Duration(seconds: 5));
+  }
+}
+
+Future<void> exportPdfReport(PatrolIntegrationTester $) async {
+  await $(TestKeys.exportPdfButton).scrollTo().tap();
+
+  final deadline = DateTime.now().add(const Duration(seconds: 120));
+  while (DateTime.now().isBefore(deadline)) {
+    await $.pump(const Duration(milliseconds: 500));
+
+    if (find.textContaining('Report export failed:').evaluate().isNotEmpty) {
+      final statusFinder = find.byKey(TestKeys.exportStatusMessage);
+      if (statusFinder.evaluate().isNotEmpty) {
+        final text = (statusFinder.evaluate().first.widget as Text).data;
+        fail('PDF export failed: $text');
+      }
+      fail('PDF export failed.');
+    }
+
+    if (find.byKey(TestKeys.exportUploadedUrl).evaluate().isNotEmpty) {
+      await $(TestKeys.exportUploadedUrl).scrollTo();
+      await $(TestKeys.exportUploadedUrl).waitUntilVisible(
+        timeout: const Duration(seconds: 10),
+      );
+      return;
+    }
+  }
+
+  fail(
+    'PDF export timed out. Ensure Firebase Storage rules allow authenticated '
+    'uploads to reports/{uid}/ (see storage.rules).',
   );
 }

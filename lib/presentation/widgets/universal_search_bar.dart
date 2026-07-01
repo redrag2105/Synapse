@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/app/di/providers.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
 
@@ -241,6 +242,9 @@ class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);
                           return ListTile(
+                            key: index == 0
+                                ? TestKeys.publicationTopicAutocompleteFirst
+                                : null,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 4,

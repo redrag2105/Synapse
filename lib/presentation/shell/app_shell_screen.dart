@@ -52,6 +52,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
       icon: CupertinoIcons.book,
       activeIcon: CupertinoIcons.book_fill,
       label: 'Journals',
+      testKey: TestKeys.bottomNavJournals,
     ),
   ];
 

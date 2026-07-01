@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/domain/entities/leading_journal_entity.dart';
@@ -32,6 +33,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
 
   late final AnimationController _focusAnimController;
   late final ScrollController _scrollController;
+  late final TabBarSuppressedNotifier _tabBarSuppressedNotifier;
   final ScrollPaginationLock _paginationLock = ScrollPaginationLock();
   String _currentSubtitle = _globalSubtitle;
   bool _isSearchBarFocused = false;
@@ -44,6 +46,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
       duration: const Duration(milliseconds: 200),
     );
     _scrollController = ScrollController()..addListener(_onScroll);
+    _tabBarSuppressedNotifier = ref.read(tabBarSuppressedProvider.notifier);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       scheduleShellKeywordIntentConsumption(
@@ -51,16 +54,12 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
         tabIndex: ShellTabIndex.journals,
         onKeyword: _applyKeyword,
       );
-      if (ref.read(shellKeywordIntentProvider) != null) return;
-
-      final notifier = ref.read(leadingJournalsControllerProvider.notifier);
-      notifier.fetch(notifier.lastQuery);
     });
   }
 
   @override
   void dispose() {
-    ref.read(tabBarSuppressedProvider.notifier).setSuppressed(false);
+    _tabBarSuppressedNotifier.setSuppressed(false);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _focusAnimController.dispose();
@@ -126,6 +125,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
     final initialSearchQuery = isGlobal ? '' : _currentSubtitle;
 
     return TabScreenScaffold(
+      key: TestKeys.journalsScreen,
       body: Stack(
         children: [
           CustomScrollView(
@@ -183,7 +183,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
 
                   return [
                     SliverToBoxAdapter(
-                      key: const ValueKey('leading_journals_overview'),
+                      key: TestKeys.journalsOverview,
                       child: _buildOverviewSection(
                         overview: overview,
                         isGlobalView: journalsNotifier.isGlobalView,
@@ -222,7 +222,9 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
 
                         final journal = journals[index];
                         return JournalLeaderboardTile(
-                          key: ValueKey(journal.id),
+                          key: index == 0
+                              ? TestKeys.firstJournalTile
+                              : ValueKey(journal.id),
                           rank: index + 1,
                           journal: journal,
                           onTap: () =>
@@ -278,6 +280,7 @@ class _LeadingJournalsScreenState extends ConsumerState<LeadingJournalsScreen>
         children: [
           _buildSectionTitle('Overview'),
           JournalSummarySection(
+            key: TestKeys.journalsStatistics,
             insights: overview.insights,
             activeJournalsSubtitle: isGlobalView
                 ? 'tracked in dataset'

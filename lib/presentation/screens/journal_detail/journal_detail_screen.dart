@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/controllers/journal_detail_controller.dart';
@@ -148,7 +149,7 @@ class _JournalDetailScreenState extends ConsumerState<JournalDetailScreen> {
               final topPadding = MediaQuery.paddingOf(context).top;
 
               return ColoredBox(
-                key: const ValueKey('journal_detail_data'),
+                key: TestKeys.journalDetailScreen,
                 color: AppColors.surfaceGray,
                 child: CustomScrollView(
                   controller: _scrollController,

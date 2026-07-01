@@ -14,6 +14,10 @@ import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/screens/profile/widgets/profile_section_widgets.dart';
 import 'package:synapse/presentation/widgets/user_avatar.dart';
 
+bool _isReportExportStatus(String message) {
+  return message.startsWith('Report ');
+}
+
 class ProfileSignedInView extends ConsumerWidget {
   final double topPadding;
   final User user;
@@ -51,7 +55,8 @@ class ProfileSignedInView extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                if (features.statusMessage != null) ...[
+                if (features.statusMessage != null &&
+                    !_isReportExportStatus(features.statusMessage!)) ...[
                   _StatusBanner(message: features.statusMessage!),
                   const SizedBox(height: 16),
                 ],
@@ -68,6 +73,7 @@ class ProfileSignedInView extends ConsumerWidget {
                 _ReportExportSection(
                   isExporting: features.isExportingReport,
                   uploadedUrl: features.uploadedReportUrl,
+                  statusMessage: features.statusMessage,
                   onExport: notifier.exportReport,
                 ),
                 const SizedBox(height: 24),
@@ -487,11 +493,13 @@ String _formatTimestamp(DateTime date) {
 class _ReportExportSection extends StatelessWidget {
   final bool isExporting;
   final String? uploadedUrl;
+  final String? statusMessage;
   final VoidCallback onExport;
 
   const _ReportExportSection({
     required this.isExporting,
     required this.uploadedUrl,
+    required this.statusMessage,
     required this.onExport,
   });
 
@@ -509,6 +517,7 @@ class _ReportExportSection extends StatelessWidget {
           SizedBox(
             height: 44,
             child: FilledButton.icon(
+              key: TestKeys.exportPdfButton,
               onPressed: isExporting ? null : onExport,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.brandBlue900,
@@ -530,6 +539,20 @@ class _ReportExportSection extends StatelessWidget {
               label: Text(isExporting ? 'Exporting…' : 'Export PDF report'),
             ),
           ),
+          if (statusMessage != null &&
+              statusMessage!.toLowerCase().contains('report')) ...[
+            const SizedBox(height: 14),
+            Text(
+              statusMessage!,
+              key: TestKeys.exportStatusMessage,
+              style: AppTextStyles.metadata.copyWith(
+                fontSize: 12,
+                color: statusMessage!.startsWith('Report export failed')
+                    ? AppColors.error
+                    : AppColors.brandBlue900,
+              ),
+            ),
+          ],
           if (uploadedUrl != null) ...[
             const SizedBox(height: 14),
             Text(
@@ -541,6 +564,7 @@ class _ReportExportSection extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             InkWell(
+              key: TestKeys.exportUploadedUrl,
               onTap: () => UrlHelper.launch(uploadedUrl),
               child: Text(
                 uploadedUrl!,
