@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/widgets/user_avatar.dart';
 
 class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -89,6 +90,7 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
                       IgnorePointer(
                         ignoring: fadeOpacity < 0.5,
                         child: GestureDetector(
+                          key: TestKeys.discoverProfileButton,
                           onTap: onProfileTap,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -161,6 +163,7 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
                     ignoring: collapsedOpacity < 0.5,
                     child: isSignedIn
                         ? IconButton(
+                            key: TestKeys.discoverSignedInProfile,
                             tooltip: 'My Profile',
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(

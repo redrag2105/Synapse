@@ -18,6 +18,7 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Function(String) onSubmitted;
   final Function(dynamic) onTopicSelected;
   final bool showBackButton;
+  final Key? searchFieldKey;
 
   UniversalHeaderDelegate({
     required this.topPadding,
@@ -28,6 +29,7 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
     this.searchBarInitialValue = '',
     this.restoreOnEmptySubmit = false,
     this.showBackButton = true,
+    this.searchFieldKey,
     required this.onFocusChanged,
     required this.onSubmitted,
     required this.onTopicSelected,
@@ -177,6 +179,7 @@ class UniversalHeaderDelegate extends SliverPersistentHeaderDelegate {
                 opacity: searchBarOpacity,
                 child: UniversalSearchBar(
                   key: ValueKey(searchBarInitialValue),
+                  searchFieldKey: searchFieldKey,
                   initialValue: searchBarInitialValue,
                   hintText: searchBarHintText,
                   enableAutocomplete: true,

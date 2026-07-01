@@ -5,6 +5,7 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/presentation/controllers/analytics_providers.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/controllers/publication_detail_controller.dart';
 import 'package:synapse/presentation/screens/publication_detail/widgets/publication_banner.dart';
 import 'package:synapse/presentation/screens/publication_detail/widgets/publication_content.dart';
@@ -40,6 +41,7 @@ class _PublicationDetailScreenState
     final detailState = ref.watch(publicationDetailProvider(widget.publicationId));
 
     return Scaffold(
+      key: TestKeys.publicationDetailScreen,
       backgroundColor: AppColors.background,
       body: SafeArea(
         top: false,

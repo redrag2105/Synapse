@@ -17,9 +17,9 @@ class ErrorHandler {
         if (statusCode == 404) {
           return const NotFoundFailure('Không tìm thấy dữ liệu trên hệ thống.');
         }
-        if (statusCode == 429) {
+        if (statusCode == 429 || statusCode == 502 || statusCode == 503) {
           return const RateLimitFailure(
-            'Hệ thống đang quá tải. Vui lòng thử lại sau.',
+            'Hệ thống OpenAlex đang tạm thời quá tải. Vui lòng thử lại sau.',
           );
         }
         if (statusCode == 400) {
@@ -32,10 +32,12 @@ class ErrorHandler {
             'Lỗi xác thực: API Key của bạn không hợp lệ hoặc chưa được nạp đúng cách.',
           );
         }
+
+        return ServerFailure(_serverErrorMessage(statusCode));
       }
 
-      return ServerFailure(
-        error.message ?? 'Đã xảy ra lỗi hệ thống từ OpenAlex.',
+      return const ServerFailure(
+        'Đã xảy ra lỗi hệ thống từ OpenAlex. Vui lòng thử lại sau.',
       );
     }
 
@@ -44,5 +46,12 @@ class ErrorHandler {
     }
 
     return ServerFailure('Đã xảy ra lỗi không xác định: ${error.toString()}');
+  }
+
+  static String _serverErrorMessage(int? statusCode) {
+    if (statusCode == 429 || statusCode == 502 || statusCode == 503) {
+      return 'Hệ thống OpenAlex đang tạm thời quá tải. Vui lòng thử lại sau.';
+    }
+    return 'Đã xảy ra lỗi hệ thống từ OpenAlex. Vui lòng thử lại sau.';
   }
 }

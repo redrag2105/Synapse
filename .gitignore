@@ -44,6 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+patrol_tests/test_bundle.dart
+patrol_test/test_bundle.dart
+
 
 #.env file for API keys and other secrets
 .env

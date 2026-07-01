@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/controllers/publication_search_controller.dart';
 import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/publication_card.dart';
@@ -28,6 +29,7 @@ class _PublicationSearchScreenState
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   bool _isFocused = false;
   late final AnimationController _focusAnimController;
+  late final TabBarSuppressedNotifier _tabBarSuppressedNotifier;
 
   final ScrollController _scrollController = ScrollController();
   final ScrollPaginationLock _paginationLock = ScrollPaginationLock();
@@ -38,6 +40,7 @@ class _PublicationSearchScreenState
   @override
   void initState() {
     super.initState();
+    _tabBarSuppressedNotifier = ref.read(tabBarSuppressedProvider.notifier);
     _focusAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -71,7 +74,7 @@ class _PublicationSearchScreenState
 
   @override
   void dispose() {
-    ref.read(tabBarSuppressedProvider.notifier).setSuppressed(false);
+    _tabBarSuppressedNotifier.setSuppressed(false);
     _focusAnimController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -132,6 +135,7 @@ class _PublicationSearchScreenState
                             : lastQuery,
                         searchBarInitialValue: lastQuery,
                         searchBarHintText: 'Search for topics...',
+                        searchFieldKey: TestKeys.publicationSearchField,
                         focusProgress: _focusAnimController.value,
                         onFocusChanged: _onFocusChanged,
                         onSubmitted: (query) {
@@ -208,6 +212,7 @@ class _PublicationSearchScreenState
 
                     return [
                       SliverPadding(
+                        key: TestKeys.publicationResultsList,
                         padding: const EdgeInsets.only(top: 16, bottom: 40),
                         sliver: SliverList.builder(
                           itemCount: itemCount,
@@ -217,7 +222,9 @@ class _PublicationSearchScreenState
                             }
 
                             return PublicationCard(
-                              key: ValueKey(publications[index].id),
+                              key: index == 0
+                                  ? TestKeys.firstPublicationCard
+                                  : ValueKey(publications[index].id),
                               publication: publications[index],
                               isLastItem: index == publications.length - 1,
                             );

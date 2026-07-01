@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/widgets/app_bottom_nav_bar.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
@@ -28,6 +29,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
       icon: CupertinoIcons.house,
       activeIcon: CupertinoIcons.house_fill,
       label: 'Home',
+      testKey: TestKeys.bottomNavHome,
     ),
     AppBottomNavItem(
       icon: CupertinoIcons.chart_bar,
@@ -39,6 +41,7 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
       activeIcon: CupertinoIcons.search,
       label: 'Search',
       isCenterFab: true,
+      testKey: TestKeys.bottomNavSearch,
     ),
     AppBottomNavItem(
       icon: CupertinoIcons.person_2,

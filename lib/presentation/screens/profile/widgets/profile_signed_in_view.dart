@@ -10,6 +10,7 @@ import 'package:synapse/domain/entities/profile_features_state.dart';
 import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
 import 'package:synapse/presentation/controllers/notification_inbox_controller.dart';
 import 'package:synapse/presentation/controllers/profile_features_controller.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/screens/profile/widgets/profile_section_widgets.dart';
 import 'package:synapse/presentation/widgets/user_avatar.dart';
 
@@ -33,6 +34,7 @@ class ProfileSignedInView extends ConsumerWidget {
     final notifier = ref.read(profileFeaturesControllerProvider.notifier);
 
     return ColoredBox(
+      key: TestKeys.signedInProfile,
       color: AppColors.surfaceGray,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -179,6 +181,7 @@ class _ProfileUserHeader extends StatelessWidget {
                   Row(
                     children: [
                       IconButton(
+                        key: TestKeys.profileBackButton,
                         onPressed: () => context.pop(),
                         icon: const Icon(
                           CupertinoIcons.back,

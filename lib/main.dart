@@ -1,46 +1,13 @@
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:synapse/app/bootstrap/app_bootstrap.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
-import 'package:synapse/app/utils/app_logger.dart';
 import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
 import 'package:synapse/presentation/controllers/notification_inbox_controller.dart';
-import 'package:synapse/firebase_options.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  if (!kIsWeb) {
-    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
-    if (kDebugMode) {
-      AppLogger.i(
-        'Firebase Analytics debug: run '
-        'adb shell setprop debug.firebase.analytics.app com.example.synapse '
-        'then open Firebase Console → Analytics → DebugView',
-      );
-    }
-    await GoogleSignIn.instance.initialize();
-  }
-
-  FlutterError.onError = (errorDetails) {
-    FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-  };
-
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(systemNavigationBarContrastEnforced: false),
-  );
+  await bootstrapSynapseApp();
   runApp(const ProviderScope(child: SynapseApp()));
 }
 

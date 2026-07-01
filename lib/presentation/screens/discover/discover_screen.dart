@@ -14,6 +14,7 @@ import 'package:synapse/presentation/screens/discover/widgets/keyword_chip.dart'
 import 'package:synapse/presentation/screens/discover/widgets/keyword_frequency_chart.dart';
 import 'package:synapse/presentation/screens/discover/widgets/keyword_stats_overview.dart';
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
 
 /// Home tab — keyword discovery and analysis.
@@ -48,6 +49,7 @@ class DiscoverScreen extends ConsumerWidget {
     }
 
     return TabScreenScaffold(
+      key: TestKeys.discoverScreen,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),

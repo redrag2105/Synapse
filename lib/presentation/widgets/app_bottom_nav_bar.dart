@@ -12,12 +12,14 @@ class AppBottomNavItem {
   final IconData activeIcon;
   final String label;
   final bool isCenterFab;
+  final Key? testKey;
 
   const AppBottomNavItem({
     required this.icon,
     required this.activeIcon,
     required this.label,
     this.isCenterFab = false,
+    this.testKey,
   });
 }
 
@@ -115,6 +117,7 @@ class AppBottomNavBar extends ConsumerWidget {
                               }
 
                               return TabBarButton(
+                                key: item.testKey,
                                 focused: currentIndex == index,
                                 labelProgress: geometry.labelProgress,
                                 label: item.label,
@@ -136,6 +139,7 @@ class AppBottomNavBar extends ConsumerWidget {
                               (CenterFabButton.fabSize / 2),
                           child: Center(
                             child: CenterFabOrb(
+                              key: items[centerFabIndex].testKey,
                               focused: centerFabFocused,
                               onTap: () => onTap(centerFabIndex),
                             ),

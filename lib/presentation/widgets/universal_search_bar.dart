@@ -16,6 +16,7 @@ class UniversalSearchBar extends ConsumerStatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<TopicEntity>? onTopicSelected;
   final VoidCallback? onCleared;
+  final Key? searchFieldKey;
 
   const UniversalSearchBar({
     super.key,
@@ -27,6 +28,7 @@ class UniversalSearchBar extends ConsumerStatefulWidget {
     this.onSubmitted,
     this.onTopicSelected,
     this.onCleared,
+    this.searchFieldKey,
   });
 
   @override
@@ -154,6 +156,7 @@ class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
               }
 
               return TextField(
+                key: widget.searchFieldKey,
                 controller: controller,
                 focusNode: focusNode,
                 textInputAction: TextInputAction.search,

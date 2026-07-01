@@ -67,6 +67,25 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  patrol: ^4.6.1
+  integration_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/app_icon.png
+  adaptive_icon_background: "#0B1F4A"
+  adaptive_icon_foreground: assets/app_icon.png
+
+patrol:
+  app_name: Synapse
+  test_directory: patrol_tests
+  android:
+    package_name: com.example.synapse
+  ios:
+    bundle_id: com.example.synapse
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

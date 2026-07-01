@@ -36,12 +36,31 @@ final dioProvider = Provider<Dio>((ref) {
 
         return handler.next(response);
       },
-      onError: (DioException e, handler) {
+      onError: (DioException e, handler) async {
         final statusCode = e.response?.statusCode;
         AppLogger.e(
           '❌ [API ERR] [$statusCode] ${e.requestOptions.path}',
           e.message,
         );
+
+        if (_isTransientHttpError(statusCode)) {
+          final retryCount = (e.requestOptions.extra['retry_count'] as int?) ?? 0;
+          if (retryCount < 3) {
+            e.requestOptions.extra['retry_count'] = retryCount + 1;
+            final delayMs = 800 * (retryCount + 1);
+            AppLogger.w(
+              '↻ Retrying ${e.requestOptions.path} after $statusCode '
+              '(attempt ${retryCount + 1}/3, ${delayMs}ms)',
+            );
+            await Future<void>.delayed(Duration(milliseconds: delayMs));
+            try {
+              final response = await dio.fetch(e.requestOptions);
+              return handler.resolve(response);
+            } on DioException catch (retryError) {
+              return handler.next(retryError);
+            }
+          }
+        }
 
         return handler.next(e);
       },
@@ -50,3 +69,7 @@ final dioProvider = Provider<Dio>((ref) {
 
   return dio;
 });
+
+bool _isTransientHttpError(int? statusCode) {
+  return statusCode == 429 || statusCode == 502 || statusCode == 503;
+}
