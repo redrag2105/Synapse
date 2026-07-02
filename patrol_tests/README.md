@@ -11,13 +11,15 @@ patrol_tests/
 │   ├── authentication_test.md
 │   ├── publication_test.md
 │   ├── journal_test.md
-│   └── export_test.md
+│   ├── export_test.md
+│   └── logout_test.md
 ├── helpers/
 │   └── patrol_helpers.dart
 ├── authentication_test.dart
 ├── publication_test.dart
 ├── journal_test.dart
-└── export_test.dart
+├── export_test.dart
+└── logout_test.dart
 ```
 
 UI targets use keys from `lib/app/config/test_keys.dart`.
@@ -64,6 +66,7 @@ patrol test -t patrol_tests/authentication_test.dart --dart-define-from-file=.en
 patrol test -t patrol_tests/publication_test.dart --dart-define-from-file=.env
 patrol test -t patrol_tests/journal_test.dart --dart-define-from-file=.env
 patrol test -t patrol_tests/export_test.dart --dart-define-from-file=.env --dart-define=PATROL_GOOGLE_EMAIL=you@gmail.com
+patrol test -t patrol_tests/logout_test.dart --dart-define-from-file=.env --dart-define=PATROL_GOOGLE_EMAIL=you@gmail.com
 ```
 
 Per-test commands, scenarios, and expected results are in [`docs/`](docs/).
@@ -79,7 +82,7 @@ Per-test commands, scenarios, and expected results are in [`docs/`](docs/).
 | `profile_test.dart` | — | 8 – Profile Navigation | Not implemented |
 | `export_test.dart` | [docs/export_test.md](docs/export_test.md) | 9 – PDF Export | Implemented |
 | `remote_config_test.dart` | — | 10 – Remote Config | Not implemented |
-| `authentication_test.dart` (logout) | — | 11 – Logout | Not implemented |
+| `logout_test.dart` | [docs/logout_test.md](docs/logout_test.md) | 11 – Logout | Implemented |
 
 When you add a new test file, create a matching doc under `docs/` (e.g. `journal_test.md`) and add a row to the table above.
 

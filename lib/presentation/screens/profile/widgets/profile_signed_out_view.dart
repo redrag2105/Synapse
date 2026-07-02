@@ -47,6 +47,7 @@ class ProfileSignedOutView extends StatelessWidget {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return ColoredBox(
+      key: TestKeys.signedOutProfile,
       color: AppColors.surfaceGray,
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),

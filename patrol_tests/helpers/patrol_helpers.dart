@@ -78,35 +78,60 @@ Future<void> completeGoogleSignIn(PatrolIntegrationTester $) async {
   await $(TestKeys.googleSignInButton).tap();
 
   // Native Google account picker — pumpAndSettle never completes while it is open.
-  await Future<void>.delayed(const Duration(seconds: 4));
+  await Future<void>.delayed(const Duration(seconds: 3));
 
   if (Platform.isAndroid) {
     await _tapGoogleAccountInNativePicker($);
-    await _dismissGoogleConsentIfShown($);
-  }
 
-  await Future<void>.delayed(const Duration(seconds: 2));
+    if (await _waitForSignedInProfile(
+      $,
+      timeout: const Duration(seconds: 12),
+    )) {
+      return;
+    }
+
+    await _dismissGoogleConsentIfShown($);
+
+    await _waitForSignedInProfile(
+      $,
+      timeout: const Duration(seconds: 15),
+    );
+  }
+}
+
+Future<bool> _waitForSignedInProfile(
+  PatrolIntegrationTester $, {
+  required Duration timeout,
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    await $.pump(const Duration(milliseconds: 500));
+    if (find.byKey(TestKeys.signedInProfile).evaluate().isNotEmpty) {
+      return true;
+    }
+  }
+  return false;
 }
 
 Future<void> _tapGoogleAccountInNativePicker(PatrolIntegrationTester $) async {
-  final selectors = <AndroidSelector>[
-    if (patrolGoogleEmail.isNotEmpty) ...[
-      AndroidSelector(text: patrolGoogleEmail),
-      AndroidSelector(textContains: patrolGoogleEmail),
-      AndroidSelector(
-        className: 'android.widget.TextView',
-        textContains: patrolGoogleEmail,
-      ),
-    ],
-    AndroidSelector(resourceName: 'com.google.android.gms:id/account_name'),
-    AndroidSelector(resourceName: 'com.google.android.gms:id/container'),
-  ];
+  final selectors = patrolGoogleEmail.isNotEmpty
+      ? <AndroidSelector>[
+          AndroidSelector(text: patrolGoogleEmail),
+          AndroidSelector(textContains: patrolGoogleEmail),
+          AndroidSelector(
+            className: 'android.widget.TextView',
+            textContains: patrolGoogleEmail,
+          ),
+        ]
+      : <AndroidSelector>[
+          AndroidSelector(resourceName: 'com.google.android.gms:id/account_name'),
+        ];
 
   for (final selector in selectors) {
     try {
       await $.platform.android.tap(
         selector,
-        timeout: const Duration(seconds: 8),
+        timeout: const Duration(seconds: 5),
       );
       return;
     } catch (_) {}
@@ -120,13 +145,14 @@ Future<void> _tapGoogleAccountInNativePicker(PatrolIntegrationTester $) async {
 }
 
 Future<void> _dismissGoogleConsentIfShown(PatrolIntegrationTester $) async {
-  await Future<void>.delayed(const Duration(seconds: 1));
+  // Only shown on some devices/accounts — skip if sign-in already completed.
+  if (find.byKey(TestKeys.signedInProfile).evaluate().isNotEmpty) return;
 
-  for (final label in ['Continue', 'CONTINUE', 'Accept', 'ACCEPT', 'OK']) {
+  for (final label in ['Continue', 'Accept', 'OK']) {
     try {
       await $.platform.android.tap(
         AndroidSelector(text: label),
-        timeout: const Duration(seconds: 2),
+        timeout: const Duration(milliseconds: 800),
       );
       return;
     } catch (_) {}
@@ -272,6 +298,20 @@ Future<void> signInAndOpenProfile(PatrolIntegrationTester $) async {
     );
     await $.pumpAndSettle(timeout: const Duration(seconds: 5));
   }
+}
+
+Future<void> signOutFromProfile(PatrolIntegrationTester $) async {
+  await $(TestKeys.signOutButton).tap();
+  await $.pumpAndSettle(timeout: const Duration(seconds: 15));
+}
+
+Future<void> waitForSignedOutProfile(PatrolIntegrationTester $) async {
+  await $(TestKeys.signedOutProfile).waitUntilVisible(
+    timeout: const Duration(seconds: 20),
+  );
+  await $(TestKeys.googleSignInButton).waitUntilVisible(
+    timeout: const Duration(seconds: 10),
+  );
 }
 
 Future<void> exportPdfReport(PatrolIntegrationTester $) async {

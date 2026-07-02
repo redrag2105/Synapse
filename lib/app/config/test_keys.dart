@@ -11,7 +11,9 @@ class TestKeys {
 
   static const googleSignInButton = Key('google_sign_in_button');
   static const profileBackButton = Key('profile_back_button');
+  static const signOutButton = Key('sign_out_button');
   static const signedInProfile = Key('signed_in_profile');
+  static const signedOutProfile = Key('signed_out_profile');
 
   static const bottomNavHome = Key('bottom_nav_home');
   static const bottomNavSearch = Key('bottom_nav_search');

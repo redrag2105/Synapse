@@ -222,6 +222,7 @@ class _ProfileUserHeader extends StatelessWidget {
                         ),
                       ),
                       TextButton(
+                        key: TestKeys.signOutButton,
                         onPressed: onSignOut,
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
