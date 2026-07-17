@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/routes/app_routes.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/domain/entities/author_entity.dart';
 import 'package:synapse/domain/entities/journal_entity.dart';
 import 'package:synapse/presentation/controllers/analytics_providers.dart';
@@ -62,6 +63,7 @@ class _KeywordDetailScreenState extends ConsumerState<KeywordDetailScreen> {
     final displayKeyword = _keyword.isEmpty ? 'All research' : _keyword;
 
     return Scaffold(
+      key: TestKeys.keywordDetailScreen,
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),

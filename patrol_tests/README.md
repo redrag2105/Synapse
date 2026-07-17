@@ -11,14 +11,20 @@ patrol_tests/
 │   ├── authentication_test.md
 │   ├── publication_test.md
 │   ├── journal_test.md
+│   ├── keyword_test.md
+│   ├── profile_test.md
 │   ├── export_test.md
+│   ├── remote_config_test.md
 │   └── logout_test.md
 ├── helpers/
 │   └── patrol_helpers.dart
 ├── authentication_test.dart
 ├── publication_test.dart
 ├── journal_test.dart
+├── keyword_test.dart
+├── profile_test.dart
 ├── export_test.dart
+├── remote_config_test.dart
 └── logout_test.dart
 ```
 
@@ -31,8 +37,8 @@ UI targets use keys from `lib/app/config/test_keys.dart`.
 | Flutter SDK | `flutter doctor` |
 | Patrol CLI | `dart pub global activate patrol_cli` |
 | Android device or emulator | Recommended — Google Sign-In needs Play Services |
-| Network | Publication tests call the OpenAlex API |
-| Firebase | `google-services.json` for sign-in tests |
+| Network | Publication / journal / keyword tests call the OpenAlex API |
+| Firebase | `google-services.json` for sign-in / export / remote config tests |
 | Android native test | `MainActivityTest.java` under `android/app/src/androidTest/java/com/example/synapse/` |
 
 ```bash
@@ -65,7 +71,10 @@ patrol test --dart-define-from-file=.env
 patrol test -t patrol_tests/authentication_test.dart --dart-define-from-file=.env
 patrol test -t patrol_tests/publication_test.dart --dart-define-from-file=.env
 patrol test -t patrol_tests/journal_test.dart --dart-define-from-file=.env
+patrol test -t patrol_tests/keyword_test.dart --dart-define-from-file=.env
+patrol test -t patrol_tests/profile_test.dart --dart-define-from-file=.env --dart-define=PATROL_GOOGLE_EMAIL=you@gmail.com
 patrol test -t patrol_tests/export_test.dart --dart-define-from-file=.env --dart-define=PATROL_GOOGLE_EMAIL=you@gmail.com
+patrol test -t patrol_tests/remote_config_test.dart --dart-define-from-file=.env --dart-define=PATROL_GOOGLE_EMAIL=you@gmail.com
 patrol test -t patrol_tests/logout_test.dart --dart-define-from-file=.env --dart-define=PATROL_GOOGLE_EMAIL=you@gmail.com
 ```
 
@@ -78,10 +87,10 @@ Per-test commands, scenarios, and expected results are in [`docs/`](docs/).
 | `authentication_test.dart` | [docs/authentication_test.md](docs/authentication_test.md) | 1 – Google Sign-In | Implemented |
 | `publication_test.dart` | [docs/publication_test.md](docs/publication_test.md) | 2 – Topic Search, 3 – Publication Details | Implemented |
 | `journal_test.dart` | [docs/journal_test.md](docs/journal_test.md) | 4 – Journals Navigation, 5 – Journal Details | Implemented |
-| `keyword_test.dart` | — | 6 – Keywords Navigation, 7 – Keyword Details | Not implemented |
-| `profile_test.dart` | — | 8 – Profile Navigation | Not implemented |
+| `keyword_test.dart` | [docs/keyword_test.md](docs/keyword_test.md) | 6 – Keywords Navigation, 7 – Keyword Details | Implemented |
+| `profile_test.dart` | [docs/profile_test.md](docs/profile_test.md) | 8 – Profile Navigation | Implemented |
 | `export_test.dart` | [docs/export_test.md](docs/export_test.md) | 9 – PDF Export | Implemented |
-| `remote_config_test.dart` | — | 10 – Remote Config | Not implemented |
+| `remote_config_test.dart` | [docs/remote_config_test.md](docs/remote_config_test.md) | 10 – Remote Config | Implemented |
 | `logout_test.dart` | [docs/logout_test.md](docs/logout_test.md) | 11 – Logout | Implemented |
 
 When you add a new test file, create a matching doc under `docs/` (e.g. `journal_test.md`) and add a row to the table above.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/domain/entities/keyword_entity.dart';
 
@@ -50,12 +51,13 @@ class KeywordFrequencyChart extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ...keywords.map(
-            (keyword) => _KeywordBarRow(
-              keyword: keyword,
+          ...keywords.asMap().entries.map(
+            (entry) => _KeywordBarRow(
+              keyword: entry.value,
               maxCount: maxCount,
+              testKey: entry.key == 0 ? TestKeys.firstKeywordTile : null,
               onTap: onKeywordTap != null
-                  ? () => onKeywordTap!(keyword)
+                  ? () => onKeywordTap!(entry.value)
                   : null,
             ),
           ),
@@ -68,11 +70,13 @@ class KeywordFrequencyChart extends StatelessWidget {
 class _KeywordBarRow extends StatelessWidget {
   final KeywordEntity keyword;
   final int maxCount;
+  final Key? testKey;
   final VoidCallback? onTap;
 
   const _KeywordBarRow({
     required this.keyword,
     required this.maxCount,
+    this.testKey,
     this.onTap,
   });
 
@@ -82,47 +86,51 @@ class _KeywordBarRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    keyword.displayName,
-                    style: AppTextStyles.button.copyWith(
-                      fontSize: 12,
-                      color: AppColors.textPrimary,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: testKey ?? ValueKey(keyword.id),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      keyword.displayName,
+                      style: AppTextStyles.button.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  AppFormatters.formatNumber(keyword.worksCount),
-                  style: AppTextStyles.metadata.copyWith(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.brandBlue500,
+                  const SizedBox(width: 8),
+                  Text(
+                    AppFormatters.formatNumber(keyword.worksCount),
+                    style: AppTextStyles.metadata.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.brandBlue500,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: fraction,
-                minHeight: 8,
-                backgroundColor: AppColors.surfaceGray,
-                color: AppColors.brandBlue500,
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: fraction,
+                  minHeight: 8,
+                  backgroundColor: AppColors.surfaceGray,
+                  color: AppColors.brandBlue500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

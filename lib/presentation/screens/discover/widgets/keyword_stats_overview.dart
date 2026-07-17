@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/domain/entities/keyword_entity.dart';
 
@@ -28,37 +29,41 @@ class KeywordStatsOverview extends StatelessWidget {
       return const _KeywordStatsSkeleton();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _TopKeywordHighlight(
-          keyword: topKeyword,
-          onTap: onTopKeywordTap,
-        ),
-        const SizedBox(height: 12),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _CompactStatTile(
-                  icon: CupertinoIcons.flame,
-                  value: trendingCount > 0 ? '$trendingCount' : '—',
-                  label: 'Trending now',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _CompactStatTile(
-                  icon: CupertinoIcons.chart_bar,
-                  value: frequentCount > 0 ? '$frequentCount' : '—',
-                  label: 'Most frequent',
-                ),
-              ),
-            ],
+    return Material(
+      key: TestKeys.keywordsStatistics,
+      color: Colors.transparent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _TopKeywordHighlight(
+            keyword: topKeyword,
+            onTap: onTopKeywordTap,
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _CompactStatTile(
+                    icon: CupertinoIcons.flame,
+                    value: trendingCount > 0 ? '$trendingCount' : '—',
+                    label: 'Trending now',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _CompactStatTile(
+                    icon: CupertinoIcons.chart_bar,
+                    value: frequentCount > 0 ? '$frequentCount' : '—',
+                    label: 'Most frequent',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

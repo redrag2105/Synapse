@@ -109,5 +109,8 @@ Per test file (command, scenario, expected result):
 | `authentication_test.dart` | [patrol_tests/docs/authentication_test.md](patrol_tests/docs/authentication_test.md) |
 | `publication_test.dart` | [patrol_tests/docs/publication_test.md](patrol_tests/docs/publication_test.md) |
 | `journal_test.dart` | [patrol_tests/docs/journal_test.md](patrol_tests/docs/journal_test.md) |
+| `keyword_test.dart` | [patrol_tests/docs/keyword_test.md](patrol_tests/docs/keyword_test.md) |
+| `profile_test.dart` | [patrol_tests/docs/profile_test.md](patrol_tests/docs/profile_test.md) |
 | `export_test.dart` | [patrol_tests/docs/export_test.md](patrol_tests/docs/export_test.md) |
+| `remote_config_test.dart` | [patrol_tests/docs/remote_config_test.md](patrol_tests/docs/remote_config_test.md) |
 | `logout_test.dart` | [patrol_tests/docs/logout_test.md](patrol_tests/docs/logout_test.md) |

@@ -575,17 +575,20 @@ class _RemoteConfigSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProfileSurfaceCard(
       child: Column(
+        key: TestKeys.remoteConfigSection,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               ProfileMetricTile(
+                key: TestKeys.remoteConfigMaxJournals,
                 label: 'Max journals',
                 value: isLoading ? '—' : '$maxJournals',
                 icon: CupertinoIcons.book_fill,
               ),
               const SizedBox(width: 10),
               ProfileMetricTile(
+                key: TestKeys.remoteConfigMaxKeywords,
                 label: 'Max keywords',
                 value: isLoading ? '—' : '$maxKeywords',
                 icon: CupertinoIcons.tag_fill,
@@ -594,6 +597,7 @@ class _RemoteConfigSection extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
+            key: TestKeys.remoteConfigRefreshButton,
             onPressed: isLoading ? null : onRefresh,
             icon: isLoading
                 ? const SizedBox(

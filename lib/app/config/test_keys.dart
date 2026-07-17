@@ -37,6 +37,15 @@ class TestKeys {
   static const firstJournalTile = Key('first_journal_tile');
   static const journalDetailScreen = Key('journal_detail_screen');
 
+  static const keywordsStatistics = Key('keywords_statistics');
+  static const firstKeywordTile = Key('first_keyword_tile');
+  static const keywordDetailScreen = Key('keyword_detail_screen');
+
+  static const remoteConfigSection = Key('remote_config_section');
+  static const remoteConfigRefreshButton = Key('remote_config_refresh_button');
+  static const remoteConfigMaxJournals = Key('remote_config_max_journals');
+  static const remoteConfigMaxKeywords = Key('remote_config_max_keywords');
+
   static const exportPdfButton = Key('export_pdf_button');
   static const exportStatusMessage = Key('export_status_message');
   static const exportUploadedUrl = Key('export_uploaded_url');

@@ -295,7 +295,8 @@ Future<void> signInAndOpenProfile(PatrolIntegrationTester $) async {
     await $(TestKeys.signedInProfile).waitUntilVisible(
       timeout: const Duration(seconds: 30),
     );
-    await $.pumpAndSettle(timeout: const Duration(seconds: 5));
+    await grantNotificationPermissionIfNeeded($);
+    await $.pump(const Duration(milliseconds: 400));
   }
 }
 
@@ -342,4 +343,179 @@ Future<void> exportPdfReport(PatrolIntegrationTester $) async {
     'PDF export timed out. Ensure Firebase Storage rules allow authenticated '
     'uploads to reports/{uid}/ (see storage.rules).',
   );
+}
+
+Future<void> tapBottomNavKeywords(PatrolIntegrationTester $) async {
+  await $(TestKeys.bottomNavKeywords).tap();
+  await $.pumpAndSettle(timeout: const Duration(seconds: 5));
+}
+
+Future<void> waitForKeywordsHome(PatrolIntegrationTester $) async {
+  await $(TestKeys.keywordsScreen).waitUntilVisible(
+    timeout: const Duration(seconds: 20),
+  );
+
+  final deadline = DateTime.now().add(const Duration(seconds: 60));
+  var loaded = false;
+  while (DateTime.now().isBefore(deadline)) {
+    await $.pump(const Duration(milliseconds: 500));
+
+    if (find.byKey(const ValueKey('frequent_error')).evaluate().isNotEmpty) {
+      fail(
+        'Keywords API error. Run with --dart-define-from-file=.env for API_KEY.',
+      );
+    }
+
+    if (find.byKey(TestKeys.keywordsStatistics).evaluate().isNotEmpty &&
+        find.byKey(TestKeys.firstKeywordTile).evaluate().isNotEmpty) {
+      loaded = true;
+      break;
+    }
+  }
+
+  if (!loaded) {
+    fail(
+      'Keywords list did not load in time. '
+      'Check network and pass --dart-define-from-file=.env.',
+    );
+  }
+
+  // Overview sits near the top — wait, don't scroll endlessly.
+  await $(TestKeys.keywordsStatistics).waitUntilVisible(
+    timeout: const Duration(seconds: 15),
+  );
+  await $('Top keyword').waitUntilVisible(timeout: const Duration(seconds: 10));
+
+  await $(TestKeys.firstKeywordTile).scrollTo();
+  await $(TestKeys.firstKeywordTile).waitUntilVisible(
+    timeout: const Duration(seconds: 10),
+  );
+}
+
+Future<void> openFirstKeyword(PatrolIntegrationTester $) async {
+  await $(TestKeys.firstKeywordTile).tap();
+  await $.pumpAndSettle(timeout: const Duration(seconds: 10));
+
+  await $(TestKeys.keywordDetailScreen).waitUntilVisible(
+    timeout: const Duration(seconds: 20),
+  );
+  await $('Keyword Detail').waitUntilVisible(
+    timeout: const Duration(seconds: 10),
+  );
+  await $('Publication trends').waitUntilVisible(
+    timeout: const Duration(seconds: 10),
+  );
+}
+
+Future<void> tapBottomNavProfile(PatrolIntegrationTester $) async {
+  await $(TestKeys.bottomNavProfile).tap();
+  await $.pumpAndSettle(timeout: const Duration(seconds: 5));
+}
+
+Future<void> waitForSignedInProfile(PatrolIntegrationTester $) async {
+  await $(TestKeys.signedInProfile).waitUntilVisible(
+    timeout: const Duration(seconds: 30),
+  );
+  await grantNotificationPermissionIfNeeded($);
+  expect($('Profile'), findsWidgets);
+  expect($('Active'), findsOneWidget);
+  expect($('Notification Center'), findsOneWidget);
+}
+
+/// Dismisses the Android notification permission dialog shown after profile init.
+/// Safe to call multiple times — returns immediately after the first successful
+/// grant (or once we've confirmed no dialog is showing).
+bool _notificationPermissionHandled = false;
+
+Future<void> grantNotificationPermissionIfNeeded(
+  PatrolIntegrationTester $,
+) async {
+  if (Platform.isMacOS || _notificationPermissionHandled) return;
+
+  // Short window for profile initialize() to present the system dialog.
+  final deadline = DateTime.now().add(const Duration(seconds: 3));
+  while (DateTime.now().isBefore(deadline)) {
+    try {
+      if (await $.platform.mobile.isPermissionDialogVisible()) {
+        await $.platform.mobile.grantPermissionWhenInUse();
+        _notificationPermissionHandled = true;
+        await $.pump(const Duration(milliseconds: 300));
+        return;
+      }
+    } catch (_) {}
+    await $.pump(const Duration(milliseconds: 200));
+  }
+
+  // No dialog appeared (already granted / not requested) — don't retry later.
+  _notificationPermissionHandled = true;
+}
+
+bool _remoteConfigValuesReady() {
+  final journalsTile = find.byKey(TestKeys.remoteConfigMaxJournals);
+  final keywordsTile = find.byKey(TestKeys.remoteConfigMaxKeywords);
+  if (journalsTile.evaluate().isEmpty || keywordsTile.evaluate().isEmpty) {
+    return false;
+  }
+
+  final journalValues = find
+      .descendant(of: journalsTile, matching: find.byType(Text))
+      .evaluate()
+      .map((e) => (e.widget as Text).data)
+      .whereType<String>();
+  final keywordValues = find
+      .descendant(of: keywordsTile, matching: find.byType(Text))
+      .evaluate()
+      .map((e) => (e.widget as Text).data)
+      .whereType<String>();
+
+  final journalsReady =
+      journalValues.any((v) => v != '—' && v != 'Max journals');
+  final keywordsReady =
+      keywordValues.any((v) => v != '—' && v != 'Max keywords');
+  return journalsReady && keywordsReady;
+}
+
+Future<void> waitForRemoteConfigValues(PatrolIntegrationTester $) async {
+  // Scroll to the refresh button (hit-testable). The section card key alone is
+  // not hit-testable for Patrol, which caused an immediate timeout after Allow.
+  await $('Refresh values').scrollTo();
+  await $(TestKeys.remoteConfigRefreshButton).waitUntilVisible(
+    timeout: const Duration(seconds: 15),
+  );
+  await $('Max journals').waitUntilVisible(timeout: const Duration(seconds: 10));
+  await $('Max keywords').waitUntilVisible(timeout: const Duration(seconds: 5));
+
+  final deadline = DateTime.now().add(const Duration(seconds: 20));
+  while (DateTime.now().isBefore(deadline)) {
+    await $.pump(const Duration(milliseconds: 250));
+
+    if (find.text('Could not load Remote Config values.').evaluate().isNotEmpty) {
+      fail('Remote Config failed to load.');
+    }
+
+    if (_remoteConfigValuesReady()) {
+      expect($(TestKeys.remoteConfigRefreshButton), findsOneWidget);
+      return;
+    }
+  }
+
+  fail('Remote Config values did not load in time.');
+}
+
+Future<void> refreshRemoteConfigValues(PatrolIntegrationTester $) async {
+  await $(TestKeys.remoteConfigRefreshButton).tap();
+
+  // Refresh briefly shows "—" then restores numbers — don't re-run full scroll/grant.
+  final deadline = DateTime.now().add(const Duration(seconds: 15));
+  while (DateTime.now().isBefore(deadline)) {
+    await $.pump(const Duration(milliseconds: 250));
+
+    if (find.text('Could not load Remote Config values.').evaluate().isNotEmpty) {
+      fail('Remote Config refresh failed.');
+    }
+
+    if (_remoteConfigValuesReady()) return;
+  }
+
+  fail('Remote Config values did not reload after refresh.');
 }
