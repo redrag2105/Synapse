@@ -6,16 +6,12 @@ class ProfileSectionHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
 
-  const ProfileSectionHeader({
-    super.key,
-    required this.title,
-    this.subtitle,
-  });
+  const ProfileSectionHeader({super.key, required this.title, this.subtitle});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

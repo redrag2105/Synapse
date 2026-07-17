@@ -40,14 +40,17 @@ class AuthorRankTile extends StatelessWidget {
     final rankColor = _rankColor();
 
     return Material(
-      color: AppColors.background,
+      type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: AppColors.borderGray, width: 0.5),
+              bottom: BorderSide(
+                color: AppColors.borderGray,
+                width: 0.5,
+              ),
             ),
           ),
           child: Row(

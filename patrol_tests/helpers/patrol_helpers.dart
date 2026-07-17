@@ -30,8 +30,7 @@ Future<void> openProfileFromDiscover(PatrolIntegrationTester $) async {
 }
 
 Future<void> navigateBackFromProfile(PatrolIntegrationTester $) async {
-  await $(TestKeys.profileBackButton).tap();
-  await $.pumpAndSettle(timeout: const Duration(seconds: 10));
+  await tapBottomNavHome($);
 }
 
 /// Signed-in avatar lives in the collapsed home header (top-right).

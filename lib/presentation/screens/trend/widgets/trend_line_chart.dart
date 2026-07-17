@@ -39,6 +39,7 @@ class TrendLineChart extends StatelessWidget {
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       padding: const EdgeInsets.only(top: 20, bottom: 12, left: 12, right: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

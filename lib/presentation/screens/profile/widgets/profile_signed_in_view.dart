@@ -2,21 +2,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
-import 'package:synapse/app/config/routes/app_routes.dart';
+import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/app/utils/url_helper.dart';
 import 'package:synapse/domain/entities/profile_features_state.dart';
 import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
 import 'package:synapse/presentation/controllers/notification_inbox_controller.dart';
 import 'package:synapse/presentation/controllers/profile_features_controller.dart';
-import 'package:synapse/app/config/test_keys.dart';
+import 'package:synapse/presentation/screens/profile/widgets/profile_crashlytics_section.dart';
 import 'package:synapse/presentation/screens/profile/widgets/profile_section_widgets.dart';
+import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/user_avatar.dart';
 
 bool _isReportExportStatus(String message) {
   return message.startsWith('Report ');
+}
+
+bool _isCrashlyticsStatus(String message) {
+  return message.contains('Crashlytics');
 }
 
 class ProfileSignedInView extends ConsumerWidget {
@@ -57,7 +61,8 @@ class ProfileSignedInView extends ConsumerWidget {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if (features.statusMessage != null &&
-                    !_isReportExportStatus(features.statusMessage!)) ...[
+                    !_isReportExportStatus(features.statusMessage!) &&
+                    !_isCrashlyticsStatus(features.statusMessage!)) ...[
                   _StatusBanner(message: features.statusMessage!),
                   const SizedBox(height: 16),
                 ],
@@ -93,45 +98,20 @@ class ProfileSignedInView extends ConsumerWidget {
                   title: 'Crashlytics',
                   subtitle: 'Firebase Crashlytics demonstration tools',
                 ),
-                _CrashlyticsSection(
+                ProfileCrashlyticsSection(
                   onRecordException: notifier.recordHandledException,
-                  onTestCrash: () => _confirmTestCrash(context, notifier),
+                  onTestCrash: () => confirmCrashlyticsTestCrash(
+                    context: context,
+                    onConfirm: notifier.triggerTestCrash,
+                  ),
                 ),
               ]),
             ),
           ),
+          const SliverToBoxAdapter(child: TabBarContentPadding()),
         ],
       ),
     );
-  }
-
-  Future<void> _confirmTestCrash(
-    BuildContext context,
-    ProfileFeaturesController notifier,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Trigger test crash?'),
-        content: const Text(
-          'This will force-close the app to verify Crashlytics reporting.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Crash app'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      notifier.triggerTestCrash();
-    }
   }
 }
 
@@ -181,51 +161,39 @@ class _ProfileUserHeader extends StatelessWidget {
               child: const _ProfileHeaderOrb(size: 100, opacity: 0.03),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(8, topPadding + 4, 0, _cardOverlap),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                topPadding + 16,
+                8,
+                _cardOverlap,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      IconButton(
-                        key: TestKeys.profileBackButton,
-                        onPressed: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(AppRoutes.homeTab);
-                          }
-                        },
-                        icon: const Icon(
-                          CupertinoIcons.back,
-                          color: Colors.white,
-                        ),
-                      ),
                       Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Profile',
-                                style: AppTextStyles.h1.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  height: 1.1,
-                                ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Profile',
+                              style: AppTextStyles.h1.copyWith(
+                                color: Colors.white,
+                                fontSize: 22,
+                                height: 1.1,
                               ),
-                              const SizedBox(height: 6),
-                              Container(
-                                width: 28,
-                                height: 2.5,
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: 28,
+                              height: 2.5,
+                              decoration: BoxDecoration(
+                                color: AppColors.warning,
+                                borderRadius: BorderRadius.circular(2),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       TextButton(
@@ -247,7 +215,7 @@ class _ProfileUserHeader extends StatelessWidget {
                     ],
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    padding: const EdgeInsets.only(top: 12, right: 12),
                     child: Text(
                       'Alerts, exports & Firebase tools',
                       style: AppTextStyles.metadata.copyWith(
@@ -641,58 +609,6 @@ class _RemoteConfigSection extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CrashlyticsSection extends StatelessWidget {
-  final VoidCallback onRecordException;
-  final VoidCallback onTestCrash;
-
-  const _CrashlyticsSection({
-    required this.onRecordException,
-    required this.onTestCrash,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ProfileSurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 44,
-            child: OutlinedButton(
-              onPressed: onRecordException,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.brandBlue900,
-                side: const BorderSide(color: AppColors.borderGray),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text('Record handled exception'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 44,
-            child: OutlinedButton(
-              onPressed: onTestCrash,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: BorderSide(
-                  color: AppColors.error.withValues(alpha: 0.35),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text('Trigger test crash'),
             ),
           ),
         ],

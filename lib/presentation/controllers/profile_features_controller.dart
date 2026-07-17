@@ -139,10 +139,6 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
   Future<void> recordHandledException() async {
     final profileService = ref.read(profileFirebaseServiceProvider);
     await profileService.recordHandledException();
-    if (!ref.mounted) return;
-    state = state.copyWith(
-      statusMessage: 'Handled exception recorded in Crashlytics.',
-    );
   }
 
   void triggerTestCrash() {

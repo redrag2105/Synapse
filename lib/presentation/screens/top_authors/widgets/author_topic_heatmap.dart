@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/domain/entities/author_topic_matrix_entity.dart';
+import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 
 class AuthorTopicHeatmap extends StatelessWidget {
   final AuthorTopicMatrix matrix;
@@ -39,63 +40,64 @@ class AuthorTopicHeatmap extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.borderGray,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+      builder: (sheetContext) {
+        final bottomInset = MediaQuery.paddingOf(sheetContext).bottom;
+        final tabClearance = AppBottomNavLayout.maxOverlayInset(bottomInset);
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 12, 20, tabClearance),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderGray,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: AppTextStyles.h3.copyWith(
-                    fontSize: 16,
-                    color: AppColors.brandBlue900,
-                  ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: AppTextStyles.h3.copyWith(
+                  fontSize: 16,
+                  color: AppColors.brandBlue900,
                 ),
-                const SizedBox(height: 16),
-                ...rows.map(
-                  (row) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          row.label,
-                          style: AppTextStyles.metadata.copyWith(
-                            fontSize: 11,
-                            color: AppColors.textLight,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.4,
-                          ),
+              ),
+              const SizedBox(height: 16),
+              ...rows.map(
+                (row) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        row.label,
+                        style: AppTextStyles.metadata.copyWith(
+                          fontSize: 11,
+                          color: AppColors.textLight,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          row.value,
-                          style: AppTextStyles.bodyText.copyWith(
-                            fontSize: 14,
-                            height: 1.4,
-                            color: AppColors.textPrimary,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        row.value,
+                        style: AppTextStyles.bodyText.copyWith(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: AppColors.textPrimary,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },

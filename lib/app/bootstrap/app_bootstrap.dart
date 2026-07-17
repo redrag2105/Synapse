@@ -1,7 +1,8 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show FlutterError, PlatformDispatcher, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -21,6 +22,8 @@ Future<void> bootstrapSynapseApp({bool forPatrolTest = false}) async {
 
   if (!kIsWeb) {
     await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
+    // Crashlytics collects for all users — not gated on sign-in.
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
     await GoogleSignIn.instance.initialize(
       // Web client ID — required on Android for Firebase ID tokens.
       serverClientId: GoogleOAuthConfig.webClientId,
@@ -30,6 +33,10 @@ Future<void> bootstrapSynapseApp({bool forPatrolTest = false}) async {
   if (!forPatrolTest) {
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
     };
   }
 

@@ -1,5 +1,4 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +11,7 @@ import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/screens/keyword_detail/keyword_detail_providers.dart';
 import 'package:synapse/presentation/screens/keyword_detail/widgets/author_publication_bar_chart.dart';
 import 'package:synapse/presentation/screens/keyword_detail/widgets/keyword_detail_header_delegate.dart';
+import 'package:synapse/presentation/screens/keyword_detail/widgets/keyword_detail_skeleton.dart';
 import 'package:synapse/presentation/screens/keyword_detail/widgets/related_journal_tile.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/publication_card.dart';
 import 'package:synapse/presentation/screens/top_authors/widgets/author_rank_tile.dart';
@@ -194,7 +194,7 @@ class _TrendSection extends ConsumerWidget {
     final trendState = ref.watch(keywordDetailTrendProvider(keyword));
 
     return trendState.when(
-      loading: () => const _CardLoading(height: 280),
+      loading: () => const KeywordDetailTrendSkeleton(),
       error: (_, _) => const _InlineError(
         message: 'Unable to load publication trend.',
       ),
@@ -254,7 +254,7 @@ class _AuthorsSection extends ConsumerWidget {
     final authorsState = ref.watch(keywordDetailAuthorsProvider(keyword));
 
     return authorsState.when(
-      loading: () => const _CardLoading(height: 200),
+      loading: () => const KeywordDetailAuthorsSkeleton(),
       error: (_, _) => const _InlineError(
         message: 'Unable to load author rankings.',
       ),
@@ -273,13 +273,7 @@ class _AuthorsSection extends ConsumerWidget {
               onAuthorTap: onAuthorTap,
             ),
             const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.borderGray),
-              ),
-              clipBehavior: Clip.antiAlias,
+            _RoundedCard(
               child: Column(
                 children: [
                   for (var i = 0; i < authors.length; i++)
@@ -312,7 +306,7 @@ class _JournalsSection extends ConsumerWidget {
     final journalsState = ref.watch(keywordDetailJournalsProvider(keyword));
 
     return journalsState.when(
-      loading: () => const _CardLoading(height: 160),
+      loading: () => const KeywordDetailJournalsSkeleton(),
       error: (_, _) => const _InlineError(
         message: 'Unable to load related journals.',
       ),
@@ -323,13 +317,7 @@ class _JournalsSection extends ConsumerWidget {
           );
         }
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.borderGray),
-          ),
-          clipBehavior: Clip.antiAlias,
+        return _RoundedCard(
           child: Column(
             children: [
               for (var i = 0; i < journals.length; i++)
@@ -360,7 +348,7 @@ class _PublicationsSection extends ConsumerWidget {
       loading: () => const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: _CardLoading(height: 120),
+          child: KeywordDetailPublicationsSkeleton(),
         ),
       ),
       error: (_, _) => const SliverToBoxAdapter(
@@ -383,16 +371,19 @@ class _PublicationsSection extends ConsumerWidget {
 
         return SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          sliver: SliverList.builder(
-            itemCount: publications.length,
-            itemBuilder: (context, index) {
-              final pub = publications[index];
-              return PublicationCard(
-                key: ValueKey(pub.id),
-                publication: pub,
-                isLastItem: index == publications.length - 1,
-              );
-            },
+          sliver: SliverToBoxAdapter(
+            child: _RoundedCard(
+              child: Column(
+                children: [
+                  for (var i = 0; i < publications.length; i++)
+                    PublicationCard(
+                      key: ValueKey(publications[i].id),
+                      publication: publications[i],
+                      isLastItem: i == publications.length - 1,
+                    ),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -400,24 +391,25 @@ class _PublicationsSection extends ConsumerWidget {
   }
 }
 
-class _CardLoading extends StatelessWidget {
-  final double height;
+/// White rounded shell that clips children so tile corners don't square off.
+class _RoundedCard extends StatelessWidget {
+  final Widget child;
 
-  const _CardLoading({required this.height});
+  const _RoundedCard({required this.child});
+
+  static const double _radius = 16;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceGray,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.borderGray.withValues(alpha: 0.6),
-        ),
+    return Material(
+      color: Colors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_radius),
+        side: const BorderSide(color: AppColors.borderGray),
       ),
-      child: const CupertinoActivityIndicator(),
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 }

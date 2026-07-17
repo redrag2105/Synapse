@@ -44,9 +44,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     });
 
-    if (authState.asData?.value != null) {
-      ref.watch(profileFeaturesControllerProvider);
-    }
+    // Crashlytics demos remain available for guests and signed-in users.
+    ref.watch(profileFeaturesControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.surfaceGray,

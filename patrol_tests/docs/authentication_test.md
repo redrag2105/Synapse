@@ -67,7 +67,7 @@ Patrol reports **PASSED** when all assertions succeed.
 | `discover_profile_button` | Open Profile from header |
 | `google_sign_in_button` | Trigger Google Sign-In |
 | `signed_in_profile` | Signed-in Profile screen |
-| `profile_back_button` | Close Profile and return to Home |
+| `bottom_nav_home` | Leave Profile via Home tab |
 | `discover_signed_in_profile` | Signed-in avatar on Home |
 
 ### Notes

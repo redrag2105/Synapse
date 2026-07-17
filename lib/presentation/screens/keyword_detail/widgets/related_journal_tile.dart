@@ -33,7 +33,7 @@ class RelatedJournalTile extends StatelessWidget {
     final rankColor = _rankColor();
 
     return Material(
-      color: Colors.white,
+      type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
         child: Container(
