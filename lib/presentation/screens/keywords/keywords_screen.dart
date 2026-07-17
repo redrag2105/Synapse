@@ -4,8 +4,8 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/domain/entities/keyword_entity.dart';
-import 'package:synapse/presentation/controllers/most_frequent_keywords_controller.dart';
 import 'package:synapse/presentation/controllers/trending_keywords_controller.dart';
+import 'package:synapse/presentation/controllers/user_frequent_keywords_controller.dart';
 import 'package:synapse/presentation/screens/discover/utils/keyword_navigation.dart';
 import 'package:synapse/presentation/screens/discover/widgets/keyword_chip.dart';
 import 'package:synapse/presentation/screens/discover/widgets/keyword_frequency_chart.dart';
@@ -14,7 +14,7 @@ import 'package:synapse/presentation/screens/keywords/widgets/keywords_header_de
 import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_layout.dart';
 import 'package:synapse/presentation/widgets/navigation/tab_screen_scaffold.dart';
 
-/// Keywords tab — keyword discovery and analysis.
+/// Keywords tab — personalized from signed-in search history + global trending.
 class KeywordsScreen extends ConsumerWidget {
   const KeywordsScreen({super.key});
 
@@ -23,22 +23,30 @@ class KeywordsScreen extends ConsumerWidget {
     final topPadding = MediaQuery.paddingOf(context).top;
     final currentYear = DateTime.now().year;
 
-    final frequentState = ref.watch(mostFrequentKeywordsControllerProvider);
+    final userFrequentState = ref.watch(userFrequentKeywordsProvider);
     final trendingState = ref.watch(trendingKeywordsControllerProvider);
 
-    final topKeyword = frequentState.maybeWhen(
-      data: (list) => list.isNotEmpty ? list.first : null,
+    final topKeyword = userFrequentState.maybeWhen(
+      data: (state) => state.topKeyword,
       orElse: () => null,
     );
     final trendingCount = trendingState.maybeWhen(
       data: (list) => list.length,
       orElse: () => 0,
     );
-    final frequentCount = frequentState.maybeWhen(
-      data: (list) => list.length,
+    final frequentCount = userFrequentState.maybeWhen(
+      data: (state) => state.displayCount,
       orElse: () => 0,
     );
-    final statsLoading = frequentState.isLoading && !frequentState.hasValue;
+    final statsLoading =
+        userFrequentState.isLoading && !userFrequentState.hasValue;
+
+    final emptyTopLabel = userFrequentState.maybeWhen(
+      data: (state) => state.isSignedIn
+          ? 'Search topics on Home to personalize'
+          : 'Sign in to track your top keyword',
+      orElse: () => 'Search topics on Home to personalize',
+    );
 
     void onKeywordTap(KeywordEntity keyword) {
       openKeywordDetail(context, keyword);
@@ -68,7 +76,7 @@ class KeywordsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Keyword-based research analysis across scholarly literature.',
+                  'Your search history plus rising themes across scholarly literature.',
                   style: AppTextStyles.metadata.copyWith(
                     fontSize: 13,
                     height: 1.4,
@@ -77,9 +85,14 @@ class KeywordsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 KeywordStatsOverview(
                   topKeyword: topKeyword,
+                  topKeywordSearchCount: userFrequentState.maybeWhen(
+                    data: (state) => state.topSearchCount,
+                    orElse: () => 0,
+                  ),
                   trendingCount: trendingCount,
                   frequentCount: frequentCount,
                   isLoading: statsLoading,
+                  emptyTopLabel: emptyTopLabel,
                   onTopKeywordTap: topKeyword != null
                       ? () => onKeywordTap(topKeyword)
                       : null,
@@ -91,7 +104,7 @@ class KeywordsScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
             child: _SectionHeader(
               title: 'Most Frequent Keywords',
-              subtitle: 'Top keywords by publication volume (all time)',
+              subtitle: 'Your most searched topics (with publication volume)',
             ),
           ),
           _SpacedPadding(
@@ -100,19 +113,27 @@ class KeywordsScreen extends ConsumerWidget {
               duration: const Duration(milliseconds: 400),
               switchInCurve: Curves.easeOut,
               switchOutCurve: Curves.easeIn,
-              child: frequentState.when(
+              child: userFrequentState.when(
                 loading: () => const KeywordFrequencySkeleton(
                   key: ValueKey('frequent_loading'),
                 ),
                 error: (_, _) => _SectionError(
                   key: const ValueKey('frequent_error'),
-                  message: 'Unable to load frequent keywords.',
+                  message: 'Unable to load your frequent keywords.',
                 ),
-                data: (keywords) => KeywordFrequencyChart(
-                  key: const ValueKey('frequent_data'),
-                  keywords: keywords,
-                  onKeywordTap: onKeywordTap,
-                ),
+                data: (state) {
+                  if (state.isEmpty) {
+                    return _FrequentEmptyState(
+                      key: TestKeys.keywordsFrequentEmpty,
+                      isSignedIn: state.isSignedIn,
+                    );
+                  }
+                  return KeywordFrequencyChart(
+                    key: const ValueKey('frequent_data'),
+                    keywords: state.keywords,
+                    onKeywordTap: onKeywordTap,
+                  );
+                },
               ),
             ),
           ),
@@ -182,6 +203,35 @@ class KeywordsScreen extends ConsumerWidget {
           ),
           const SliverToBoxAdapter(child: TabBarContentPadding()),
         ],
+      ),
+    );
+  }
+}
+
+class _FrequentEmptyState extends StatelessWidget {
+  final bool isSignedIn;
+
+  const _FrequentEmptyState({super.key, required this.isSignedIn});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderGray),
+      ),
+      child: Text(
+        isSignedIn
+            ? 'Search research topics on Home — your most frequent keywords will appear here.'
+            : 'Sign in and search topics on Home to build your personal keyword list.',
+        style: AppTextStyles.metadata.copyWith(
+          fontSize: 13,
+          height: 1.45,
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }

@@ -39,6 +39,7 @@ class TestKeys {
 
   static const keywordsStatistics = Key('keywords_statistics');
   static const firstKeywordTile = Key('first_keyword_tile');
+  static const keywordsFrequentEmpty = Key('keywords_frequent_empty');
   static const keywordDetailScreen = Key('keyword_detail_screen');
 
   static const remoteConfigSection = Key('remote_config_section');

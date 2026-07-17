@@ -16,7 +16,12 @@ void main() {
       await waitForKeywordsHome($);
 
       expect($(TestKeys.keywordsStatistics), findsOneWidget);
-      expect($(TestKeys.firstKeywordTile), findsOneWidget);
+      expect(
+        find.byKey(TestKeys.firstKeywordTile).evaluate().isNotEmpty ||
+            find.byKey(TestKeys.keywordsFrequentEmpty).evaluate().isNotEmpty,
+        isTrue,
+      );
+      expect($('Trending Keywords'), findsOneWidget);
     },
   );
 

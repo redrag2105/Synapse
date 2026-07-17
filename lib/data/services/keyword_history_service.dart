@@ -17,6 +17,8 @@ class KeywordHistoryService {
 
   static const int _recentLimit = 10;
   static const int _frequentLimit = 3;
+  /// How many history docs to pull from Firestore on reinstall / cold start.
+  static const int _remoteSyncLimit = 50;
   static const String _prefsPrefix = 'keyword_history_v1_';
 
   CollectionReference<Map<String, dynamic>> _historyRef(String uid) {
@@ -102,11 +104,11 @@ class KeywordHistoryService {
     try {
       final recentFuture = _historyRef(uid)
           .orderBy('lastSearchedAt', descending: true)
-          .limit(_recentLimit)
+          .limit(_remoteSyncLimit)
           .get();
       final frequentFuture = _historyRef(uid)
           .orderBy('searchCount', descending: true)
-          .limit(_frequentLimit)
+          .limit(_remoteSyncLimit)
           .get();
 
       final results = await Future.wait([recentFuture, frequentFuture]);
@@ -121,16 +123,55 @@ class KeywordHistoryService {
         final merged = _mergeEntries(latestLocal, remote);
         _memory[uid] = merged;
         await _saveLocal(uid, merged);
+        AppLogger.i(
+          'Restored ${merged.length} keyword history entries from Firestore',
+        );
         return _snapshotFrom(merged);
       }
+
+      AppLogger.i('Firestore keyword history empty for uid=$uid');
     } catch (e, st) {
-      AppLogger.w('Remote keyword history unavailable; using local', e);
+      AppLogger.w(
+        'Remote keyword history unavailable; using local. '
+        'Deploy firestore.rules and enable Firestore in project synapse-prm393.',
+        e,
+      );
       AppLogger.d(st.toString());
     }
 
     // Re-read after await so we never return a stale empty pre-save snapshot.
     await _ensureMemory(uid);
     return _snapshotFrom(_memory[uid] ?? const []);
+  }
+
+  /// Full history ranked by [KeywordHistoryEntry.searchCount] (desc).
+  ///
+  /// Unlike [fetchHistory]'s snapshot (capped at 3 frequent), this returns up
+  /// to [limit] entries from the complete local/memory store — used by the
+  /// Keywords tab personalization.
+  Future<List<KeywordHistoryEntry>> fetchRankedByFrequency(
+    String uid, {
+    required int limit,
+  }) async {
+    await _ensureMemory(uid);
+    final entries = List<KeywordHistoryEntry>.from(
+      _memory[uid] ?? const <KeywordHistoryEntry>[],
+    );
+    if (entries.isEmpty || limit <= 0) return const [];
+
+    entries.sort((a, b) {
+      final byCount = b.searchCount.compareTo(a.searchCount);
+      if (byCount != 0) return byCount;
+      return b.lastSearchedAt.compareTo(a.lastSearchedAt);
+    });
+
+    return entries.take(limit).toList(growable: false);
+  }
+
+  /// Unique keyword count for [uid] (uncapped).
+  Future<int> uniqueKeywordCount(String uid) async {
+    await _ensureMemory(uid);
+    return _memory[uid]?.length ?? 0;
   }
 
   Future<void> _ensureMemory(String uid) async {
@@ -174,9 +215,11 @@ class KeywordHistoryService {
           }
           tx.update(docRef, updates);
         });
+        AppLogger.i('Firestore keyword sync OK: "$display"');
       } catch (e, st) {
         AppLogger.w(
-          'Firestore keyword sync failed for "$display" (local copy kept)',
+          'Firestore keyword sync failed for "$display" (local copy kept). '
+          'Check Firestore is enabled and rules are deployed for synapse-prm393.',
           e,
         );
         AppLogger.d(st.toString());

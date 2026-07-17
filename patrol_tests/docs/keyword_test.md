@@ -35,15 +35,16 @@ patrol test -t patrol_tests/keyword_test.dart --dart-define-from-file=.env --nam
 |------|-----------|
 | Keywords tab | `keywords_screen` key visible |
 | Statistics | `keywords_statistics` and **Top keyword** visible |
-| List | **Most Frequent Keywords** and `first_keyword_tile` visible |
+| List | **Most Frequent Keywords** with `first_keyword_tile` (signed-in history) **or** `keywords_frequent_empty` |
+| Trending | **Trending Keywords** section visible |
 
 Patrol reports **PASSED**.
 
 ### Prerequisites
 
-- **Internet** access (OpenAlex API)
+- **Internet** access (OpenAlex API for trending + works counts)
 - **`.env` with `API_KEY`** — pass `--dart-define-from-file=.env`
-- No sign-in required
+- Personalized “Most Frequent” needs a signed-in user with Home search history; guests see an empty-state card instead
 
 ### Test keys used
 
@@ -52,7 +53,8 @@ Patrol reports **PASSED**.
 | `bottom_nav_keywords` | Open Keywords tab |
 | `keywords_screen` | Keywords screen loaded |
 | `keywords_statistics` | Overview statistics loaded |
-| `first_keyword_tile` | At least one keyword in the list |
+| `first_keyword_tile` | First personal keyword (when history exists) |
+| `keywords_frequent_empty` | Empty state when no personal history |
 
 ---
 

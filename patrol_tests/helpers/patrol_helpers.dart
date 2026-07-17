@@ -366,8 +366,17 @@ Future<void> waitForKeywordsHome(PatrolIntegrationTester $) async {
       );
     }
 
-    if (find.byKey(TestKeys.keywordsStatistics).evaluate().isNotEmpty &&
-        find.byKey(TestKeys.firstKeywordTile).evaluate().isNotEmpty) {
+    final hasStats =
+        find.byKey(TestKeys.keywordsStatistics).evaluate().isNotEmpty;
+    final hasList =
+        find.byKey(TestKeys.firstKeywordTile).evaluate().isNotEmpty;
+    final hasEmpty =
+        find.byKey(TestKeys.keywordsFrequentEmpty).evaluate().isNotEmpty;
+    final hasTrending =
+        find.byKey(const ValueKey('trending_data')).evaluate().isNotEmpty;
+
+    // Personalized list may be empty (guest / no history); trending still loads.
+    if (hasStats && (hasList || hasEmpty) && hasTrending) {
       loaded = true;
       break;
     }
@@ -375,25 +384,50 @@ Future<void> waitForKeywordsHome(PatrolIntegrationTester $) async {
 
   if (!loaded) {
     fail(
-      'Keywords list did not load in time. '
+      'Keywords screen did not load in time. '
       'Check network and pass --dart-define-from-file=.env.',
     );
   }
 
-  // Overview sits near the top — wait, don't scroll endlessly.
   await $(TestKeys.keywordsStatistics).waitUntilVisible(
     timeout: const Duration(seconds: 15),
   );
   await $('Top keyword').waitUntilVisible(timeout: const Duration(seconds: 10));
-
-  await $(TestKeys.firstKeywordTile).scrollTo();
-  await $(TestKeys.firstKeywordTile).waitUntilVisible(
+  await $('Trending now').waitUntilVisible(timeout: const Duration(seconds: 10));
+  await $('Most Frequent Keywords').scrollTo();
+  await $('Most Frequent Keywords').waitUntilVisible(
     timeout: const Duration(seconds: 10),
   );
+
+  if (find.byKey(TestKeys.firstKeywordTile).evaluate().isNotEmpty) {
+    await $(TestKeys.firstKeywordTile).scrollTo();
+    await $(TestKeys.firstKeywordTile).waitUntilVisible(
+      timeout: const Duration(seconds: 10),
+    );
+  } else {
+    await $(TestKeys.keywordsFrequentEmpty).scrollTo();
+    await $(TestKeys.keywordsFrequentEmpty).waitUntilVisible(
+      timeout: const Duration(seconds: 10),
+    );
+  }
 }
 
 Future<void> openFirstKeyword(PatrolIntegrationTester $) async {
-  await $(TestKeys.firstKeywordTile).tap();
+  // Prefer a personal frequent keyword; otherwise open a trending chip.
+  if (find.byKey(TestKeys.firstKeywordTile).evaluate().isNotEmpty) {
+    await $(TestKeys.firstKeywordTile).tap();
+  } else {
+    await $('Trending Keywords').scrollTo();
+    final trendingChip = find.descendant(
+      of: find.byKey(const ValueKey('trending_data')),
+      matching: find.byType(InkWell),
+    );
+    if (trendingChip.evaluate().isEmpty) {
+      fail('No keyword available to open (no history and no trending chips).');
+    }
+    await $.tester.tap(trendingChip.first);
+  }
+
   await $.pumpAndSettle(timeout: const Duration(seconds: 10));
 
   await $(TestKeys.keywordDetailScreen).waitUntilVisible(

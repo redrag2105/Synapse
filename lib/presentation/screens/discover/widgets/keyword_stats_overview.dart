@@ -4,22 +4,25 @@ import 'package:shimmer/shimmer.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
 import 'package:synapse/app/config/test_keys.dart';
-import 'package:synapse/app/utils/app_formatters.dart';
 import 'package:synapse/domain/entities/keyword_entity.dart';
 
 class KeywordStatsOverview extends StatelessWidget {
   final KeywordEntity? topKeyword;
+  final int topKeywordSearchCount;
   final int trendingCount;
   final int frequentCount;
   final bool isLoading;
+  final String emptyTopLabel;
   final VoidCallback? onTopKeywordTap;
 
   const KeywordStatsOverview({
     super.key,
     this.topKeyword,
+    this.topKeywordSearchCount = 0,
     this.trendingCount = 0,
     this.frequentCount = 0,
     this.isLoading = false,
+    this.emptyTopLabel = 'Search topics on Home to personalize',
     this.onTopKeywordTap,
   });
 
@@ -37,6 +40,8 @@ class KeywordStatsOverview extends StatelessWidget {
         children: [
           _TopKeywordHighlight(
             keyword: topKeyword,
+            searchCount: topKeywordSearchCount,
+            emptyLabel: emptyTopLabel,
             onTap: onTopKeywordTap,
           ),
           const SizedBox(height: 12),
@@ -70,9 +75,16 @@ class KeywordStatsOverview extends StatelessWidget {
 
 class _TopKeywordHighlight extends StatelessWidget {
   final KeywordEntity? keyword;
+  final int searchCount;
+  final String emptyLabel;
   final VoidCallback? onTap;
 
-  const _TopKeywordHighlight({this.keyword, this.onTap});
+  const _TopKeywordHighlight({
+    this.keyword,
+    required this.searchCount,
+    required this.emptyLabel,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +147,7 @@ class _TopKeywordHighlight extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                hasKeyword ? keyword!.displayName : 'Loading keywords…',
+                hasKeyword ? keyword!.displayName : emptyLabel,
                 style: AppTextStyles.h2.copyWith(
                   color: Colors.white,
                   fontSize: 17,
@@ -145,10 +157,12 @@ class _TopKeywordHighlight extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (hasKeyword && keyword!.worksCount > 0) ...[
+              if (hasKeyword && searchCount > 0) ...[
                 const SizedBox(height: 6),
                 Text(
-                  '${AppFormatters.formatNumber(keyword!.worksCount)} scholarly works',
+                  searchCount == 1
+                      ? 'Searched 1 time'
+                      : 'Searched $searchCount times',
                   style: AppTextStyles.metadata.copyWith(
                     color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 12,

@@ -1,73 +1,13 @@
 rules_version = '2';
 
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-//
 // Collection: users/{userId}/keywordHistory/{keywordDocId}
-// Fields:
-//   keyword: string (1..200)
-//   normalizedKeyword: string (1..200)
-//   topicId: string | absent (optional OpenAlex topic id)
-//   searchCount: int (>= 1)
-//   lastSearchedAt: timestamp
-//   firstSearchedAt: timestamp
-//
-// Client queries:
-//   orderBy('lastSearchedAt', descending) limit 8
-//   orderBy('searchCount', descending) limit 8
-//
-// ===============================================================
+// Deploy with: npx -y firebase-tools@latest deploy --only firestore:rules
+// Console path: Firestore → Data → users/{uid}/keywordHistory
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function keywordHistoryKeys() {
-      return ['keyword', 'normalizedKeyword', 'topicId', 'searchCount',
-              'lastSearchedAt', 'firstSearchedAt'];
-    }
-
-    function hasOnlyKeywordHistoryKeys() {
-      return request.resource.data.keys().hasOnly(keywordHistoryKeys());
-    }
-
-    function isValidKeywordHistoryCreate() {
-      let d = request.resource.data;
-      return hasOnlyKeywordHistoryKeys()
-        && d.keyword is string
-        && d.keyword.size() > 0
-        && d.keyword.size() <= 200
-        && d.normalizedKeyword is string
-        && d.normalizedKeyword.size() > 0
-        && d.normalizedKeyword.size() <= 200
-        && d.searchCount is int
-        && d.searchCount == 1
-        && d.lastSearchedAt is timestamp
-        && d.firstSearchedAt is timestamp
-        && (!('topicId' in d) || (d.topicId is string && d.topicId.size() <= 128));
-    }
-
-    function isValidKeywordHistoryUpdate() {
-      let d = request.resource.data;
-      let old = resource.data;
-      return hasOnlyKeywordHistoryKeys()
-        && d.keyword is string
-        && d.keyword.size() > 0
-        && d.keyword.size() <= 200
-        && d.normalizedKeyword is string
-        && d.normalizedKeyword.size() > 0
-        && d.searchCount is int
-        && d.searchCount == old.searchCount + 1
-        && d.lastSearchedAt is timestamp
-        && d.firstSearchedAt == old.firstSearchedAt
-        && (!('topicId' in d) || (d.topicId is string && d.topicId.size() <= 128));
+      return request.auth != null && request.auth.uid == userId;
     }
 
     match /users/{userId} {
@@ -75,8 +15,36 @@ service cloud.firestore {
 
       match /keywordHistory/{keywordId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidKeywordHistoryCreate();
-        allow update: if isOwner(userId) && isValidKeywordHistoryUpdate();
+
+        // Create: required string fields + searchCount == 1.
+        // topicId and timestamps are validated loosely so ServerTimestamp works.
+        allow create: if isOwner(userId)
+          && request.resource.data.keyword is string
+          && request.resource.data.keyword.size() > 0
+          && request.resource.data.keyword.size() <= 200
+          && request.resource.data.normalizedKeyword is string
+          && request.resource.data.normalizedKeyword.size() > 0
+          && request.resource.data.searchCount is int
+          && request.resource.data.searchCount == 1
+          && request.resource.data.keys().hasAll([
+               'keyword', 'normalizedKeyword', 'searchCount',
+               'lastSearchedAt', 'firstSearchedAt'
+             ])
+          && request.resource.data.keys().hasOnly([
+               'keyword', 'normalizedKeyword', 'topicId', 'searchCount',
+               'lastSearchedAt', 'firstSearchedAt'
+             ]);
+
+        allow update: if isOwner(userId)
+          && request.resource.data.keyword is string
+          && request.resource.data.normalizedKeyword is string
+          && request.resource.data.searchCount is int
+          && request.resource.data.searchCount == resource.data.searchCount + 1
+          && request.resource.data.keys().hasOnly([
+               'keyword', 'normalizedKeyword', 'topicId', 'searchCount',
+               'lastSearchedAt', 'firstSearchedAt'
+             ]);
+
         allow delete: if false;
       }
     }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synapse/data/services/remote_config_service.dart';
 import 'package:synapse/presentation/controllers/leading_journals_controller.dart';
 import 'package:synapse/presentation/controllers/most_frequent_keywords_controller.dart';
+import 'package:synapse/presentation/controllers/user_frequent_keywords_controller.dart';
 
 final remoteConfigServiceProvider = Provider<RemoteConfigService>((ref) {
   return RemoteConfigService();
@@ -33,6 +34,7 @@ class AppRemoteConfigController extends Notifier<RemoteConfigValues> {
 
       if (changed) {
         ref.invalidate(mostFrequentKeywordsControllerProvider);
+        ref.invalidate(userFrequentKeywordsProvider);
         ref.invalidate(leadingJournalsControllerProvider);
       }
     } finally {
