@@ -154,8 +154,9 @@ class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
                     color: Colors.grey,
                   ),
                   onPressed: () {
+                    // Clear text only — keep focus/keyboard and current results.
+                    // Empty submit (Enter) is what resets the Home screen.
                     controller.clear();
-                    widget.onCleared?.call();
                   },
                 );
               }

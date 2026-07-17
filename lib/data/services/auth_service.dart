@@ -15,14 +15,54 @@ class AuthService {
       return _auth.signInWithPopup(provider);
     }
 
-    final googleUser = await GoogleSignIn.instance.authenticate();
-    final googleAuth = googleUser.authentication;
+    try {
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final googleAuth = googleUser.authentication;
 
-    final credential = GoogleAuthProvider.credential(
-      idToken: googleAuth.idToken,
-    );
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        throw FirebaseAuthException(
+          code: 'missing-id-token',
+          message:
+              'Google Sign-In did not return an ID token. '
+              'Register this machine’s debug SHA-1 in Firebase and '
+              're-download google-services.json.',
+        );
+      }
 
-    return _auth.signInWithCredential(credential);
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      return _auth.signInWithCredential(credential);
+    } on GoogleSignInException catch (e) {
+      throw FirebaseAuthException(
+        code: _mapGoogleSignInCode(e),
+        message: _mapGoogleSignInMessage(e),
+      );
+    }
+  }
+
+  String _mapGoogleSignInCode(GoogleSignInException e) {
+    final detail = (e.description ?? '').toLowerCase();
+    // Google reports SHA/OAuth misconfig as "canceled" + "[16] Account reauth failed".
+    if (detail.contains('reauth failed') || detail.contains('[16]')) {
+      return 'sha-mismatch';
+    }
+    if (e.code == GoogleSignInExceptionCode.canceled) {
+      return 'aborted-by-user';
+    }
+    return 'google-sign-in-failed';
+  }
+
+  String _mapGoogleSignInMessage(GoogleSignInException e) {
+    final detail = (e.description ?? '').toLowerCase();
+    if (detail.contains('reauth failed') || detail.contains('[16]')) {
+      return 'Google Sign-In rejected this app build (SHA-1 mismatch). '
+          'Add your debug SHA-1 to Firebase → Project settings → Android app, '
+          'then re-download google-services.json and rebuild.';
+    }
+    if (e.code == GoogleSignInExceptionCode.canceled) {
+      return 'Google sign-in was cancelled.';
+    }
+    return e.description ?? e.toString();
   }
 
   Future<void> signOut() async {

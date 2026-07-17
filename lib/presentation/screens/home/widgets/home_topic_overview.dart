@@ -2,10 +2,14 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/app/utils/app_formatters.dart';
+import 'package:synapse/domain/entities/author_entity.dart';
+import 'package:synapse/domain/entities/journal_entity.dart';
 import 'package:synapse/domain/entities/publication_entity.dart';
 import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
 import 'package:synapse/presentation/screens/home/widgets/home_stat_card.dart';
@@ -143,8 +147,10 @@ class _HomeDashboardStats extends ConsumerWidget {
         ? AppFormatters.formatNumber(trendTotals.total)
         : AppFormatters.formatNumber(publications.length);
     final peakYear = trendTotals.peakYear?.toString() ?? '—';
-    final topAuthor = authorState.asData?.value?.displayName ?? '—';
-    final topJournal = journalState.asData?.value?.displayName ?? '—';
+    final topAuthorEntity = authorState.asData?.value;
+    final topJournalEntity = journalState.asData?.value;
+    final topAuthor = topAuthorEntity?.displayName ?? '—';
+    final topJournal = topJournalEntity?.displayName ?? '—';
 
     return Column(
       children: [
@@ -158,6 +164,7 @@ class _HomeDashboardStats extends ConsumerWidget {
                 icon: CupertinoIcons.doc_text,
                 label: 'Total publications',
                 value: trendState.isLoading ? '…' : totalPubs,
+                accent: HomeStatAccent.blueWash,
               ),
             ),
             const SizedBox(width: 12),
@@ -184,38 +191,60 @@ class _HomeDashboardStats extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: HomeStatCard(
-                icon: CupertinoIcons.person,
-                label: 'Top author',
-                value: authorState.isLoading ? '…' : topAuthor,
+                icon: CupertinoIcons.star,
+                label: 'Most Citations',
+                value: influential == null
+                    ? '—'
+                    : AppFormatters.formatNumber(influential!.citationCount),
+                accent: HomeStatAccent.goldWash,
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: HomeStatCard(
-                icon: CupertinoIcons.book,
-                label: 'Top journal',
-                value: journalState.isLoading ? '…' : topJournal,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: HomeStatCard(
-                icon: CupertinoIcons.star,
-                label: 'Citations (top work)',
-                value: influential == null
-                    ? '—'
-                    : AppFormatters.formatNumber(influential!.citationCount),
-              ),
-            ),
-          ],
+        HomeFeaturedStatCard(
+          icon: CupertinoIcons.person_fill,
+          label: 'Top contributing author',
+          value: topAuthor,
+          meta: topAuthorEntity != null
+              ? '${AppFormatters.formatNumber(topAuthorEntity.worksCount)} related works'
+              : null,
+          isLoading: authorState.isLoading,
+          useGradient: true,
+          onTap: topAuthorEntity == null
+              ? null
+              : () => _openAuthor(context, topAuthorEntity, topic),
+        ),
+        const SizedBox(height: 10),
+        HomeFeaturedStatCard(
+          icon: CupertinoIcons.book_fill,
+          label: 'Primary journal',
+          value: topJournal,
+          meta: topJournalEntity != null
+              ? '${AppFormatters.formatNumber(topJournalEntity.worksCount)} related works'
+              : null,
+          isLoading: journalState.isLoading,
+          onTap: topJournalEntity == null
+              ? null
+              : () => _openJournal(context, topJournalEntity),
         ),
       ],
     );
+  }
+
+  void _openAuthor(
+    BuildContext context,
+    AuthorEntity author,
+    String topic,
+  ) {
+    final authorId = author.id.split('/').last;
+    final encodedTopic = Uri.encodeComponent(topic);
+    context.push('${AppRoutes.topAuthors}/$authorId?topic=$encodedTopic');
+  }
+
+  void _openJournal(BuildContext context, JournalEntity journal) {
+    final journalId = journal.id.split('/').last;
+    context.push(AppRoutes.journalDetail(journalId));
   }
 }
 
@@ -246,7 +275,7 @@ class _InfluentialPublicationSection extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius - 1),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
@@ -283,12 +312,17 @@ class _InfluentialPublicationSection extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  Text(
-                    '${AppFormatters.formatNumber(publication.citationCount)} citations',
-                    style: AppTextStyles.metadata.copyWith(
-                      color: AppColors.brandBlue900,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                  Flexible(
+                    child: Text(
+                      '${AppFormatters.formatNumber(publication.citationCount)} citations',
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.metadata.copyWith(
+                        color: AppColors.brandBlue900,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],

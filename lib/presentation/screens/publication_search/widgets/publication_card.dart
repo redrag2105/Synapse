@@ -29,6 +29,7 @@ class PublicationCard extends StatelessWidget {
     );
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.background,
         border: isLastItem

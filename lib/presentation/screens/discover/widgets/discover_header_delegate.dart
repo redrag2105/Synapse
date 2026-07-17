@@ -188,8 +188,9 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
                               displayName: profileDisplayName,
                               email: profileEmail,
                               radius: 18,
-                              backgroundColor: AppColors.brandBlue600,
-                              borderColor: Colors.white.withValues(alpha: 0.55),
+                              backgroundColor: Colors.white,
+                              initialsColor: AppColors.brandBlue900,
+                              borderColor: Colors.white.withValues(alpha: 0.9),
                             ),
                             onPressed: onProfileTap,
                           )

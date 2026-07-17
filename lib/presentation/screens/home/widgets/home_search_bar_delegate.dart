@@ -56,7 +56,8 @@ class HomeSearchBarDelegate extends SliverPersistentHeaderDelegate {
           initialValue: initialValue,
           hintText: hintText,
           enableAutocomplete: true,
-          restoreOnEmptySubmit: true,
+          // Empty Enter clears results; blur with empty text restores query.
+          restoreOnEmptySubmit: false,
           optionsTopGap: 16,
           onFocusChanged: onFocusChanged,
           onSubmitted: onSubmitted,

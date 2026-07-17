@@ -7,14 +7,15 @@ import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/domain/entities/topic_entity.dart';
 import 'package:synapse/presentation/controllers/auth_providers.dart';
+import 'package:synapse/presentation/controllers/keyword_history_providers.dart';
 import 'package:synapse/presentation/controllers/publication_search_controller.dart';
 import 'package:synapse/presentation/controllers/publication_trend_controller.dart';
 import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/screens/discover/widgets/discover_header_delegate.dart';
-import 'package:synapse/presentation/screens/home/widgets/home_dashboard_teaser.dart';
+import 'package:synapse/presentation/screens/home/widgets/home_keyword_history_section.dart';
 import 'package:synapse/presentation/screens/home/widgets/home_search_bar_delegate.dart';
 import 'package:synapse/presentation/screens/home/widgets/home_topic_overview.dart';
-import 'package:synapse/presentation/screens/publication_search/widgets/publication_card_skeleton.dart';
+import 'package:synapse/presentation/screens/home/widgets/home_topic_overview_skeleton.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/search_empty_state.dart';
 import 'package:synapse/presentation/screens/publication_search/widgets/smart_trend_button.dart';
 import 'package:synapse/presentation/widgets/pagination_footer.dart';
@@ -61,7 +62,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final metrics = _scrollController.position;
     _paginationLock.onScroll(metrics);
 
-    // Expand/collapse trend chip without rebuilding the whole screen.
     final direction = metrics.userScrollDirection;
     if (direction == ScrollDirection.reverse) {
       if (_isTrendButtonExpanded.value) _isTrendButtonExpanded.value = false;
@@ -86,12 +86,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _runSearch(String query) {
+  void _clearSearch() {
     _paginationLock.reset();
-    ref.read(publicationSearchControllerProvider.notifier).search(query);
+    ref.read(publicationSearchControllerProvider.notifier).search('');
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+  }
+
+  void _runSearch(String query) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      _clearSearch();
+      return;
+    }
+
+    _paginationLock.reset();
+    ref.read(publicationSearchControllerProvider.notifier).search(trimmed);
     ref
         .read(publicationTrendControllerProvider.notifier)
-        .fetchTrend(keyword: query, topicName: query, saveHistory: false);
+        .fetchTrend(keyword: trimmed, topicName: trimmed, saveHistory: false);
+    ref.read(keywordHistoryProvider.notifier).record(keyword: trimmed);
   }
 
   void _runTopicSearch(TopicEntity topic) {
@@ -106,6 +121,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           keyword: topic.displayName,
           topicName: topic.displayName,
           saveHistory: false,
+        );
+    ref.read(keywordHistoryProvider.notifier).record(
+          keyword: topic.displayName,
+          topicId: topic.id.split('/').last,
         );
   }
 
@@ -145,6 +164,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final searchState = ref.watch(publicationSearchControllerProvider);
     final controller = ref.read(publicationSearchControllerProvider.notifier);
     final user = ref.watch(currentUserProvider);
+    // Keep history controller warm while signed in so searches update it live.
+    if (user != null) {
+      ref.watch(keywordHistoryProvider);
+    }
 
     final media = MediaQuery.of(context);
     final topPadding = media.padding.top;
@@ -203,14 +226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 ...searchState.when(
                   loading: () => [
-                    SliverPadding(
-                      padding: const EdgeInsets.only(top: 16, bottom: 40),
-                      sliver: SliverList.builder(
-                        itemCount: 5,
-                        itemBuilder: (context, index) =>
-                            const PublicationCardSkeleton(),
-                      ),
-                    ),
+                    const HomeTopicOverviewSkeleton(),
                   ],
                   error: (error, stack) => [
                     SliverFillRemaining(
@@ -222,8 +238,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (publications.isEmpty) {
                       if (lastQuery.isEmpty) {
                         return [
-                          const SliverToBoxAdapter(
-                            child: HomeDashboardTeaser(),
+                          SliverToBoxAdapter(
+                            child: HomeKeywordHistorySection(
+                              onKeywordTap: _runSearch,
+                            ),
                           ),
                         ];
                       }
@@ -263,7 +281,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   return const SizedBox.shrink();
                 }
 
-                // Header maxExtent collapses with focus — no scroll tracking needed.
                 final headerExtent =
                     headerMax - (headerMax - headerMin) * focusProgress;
                 final overlayTop = headerExtent + searchBarHeight;

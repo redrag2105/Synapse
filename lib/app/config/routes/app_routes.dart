@@ -8,7 +8,7 @@ import 'package:synapse/presentation/screens/keywords/keywords_screen.dart';
 import 'package:synapse/presentation/screens/leading_journals/leading_journals_screen.dart';
 import 'package:synapse/presentation/screens/profile/profile_screen.dart';
 import 'package:synapse/presentation/screens/publication_detail/publication_detail_screen.dart';
-import 'package:synapse/presentation/screens/research_dashboard/research_dashboard_screen.dart';
+import 'package:synapse/presentation/screens/keyword_detail/keyword_detail_screen.dart';
 import 'package:synapse/presentation/screens/trend/trend_screen.dart';
 import 'package:synapse/presentation/screens/top_authors/top_authors_screen.dart';
 import 'package:synapse/presentation/shell/app_shell_screen.dart';
@@ -150,7 +150,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final keyword = state.pathParameters['keyword'] ?? '__ALL__';
-          return ResearchDashboardScreen(keyword: keyword);
+          return KeywordDetailScreen(keyword: keyword);
         },
       ),
       GoRoute(
