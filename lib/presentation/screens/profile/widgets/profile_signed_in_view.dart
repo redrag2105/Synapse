@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/app/utils/url_helper.dart';
 import 'package:synapse/domain/entities/profile_features_state.dart';
 import 'package:synapse/presentation/controllers/app_remote_config_controller.dart';
@@ -188,7 +189,13 @@ class _ProfileUserHeader extends StatelessWidget {
                     children: [
                       IconButton(
                         key: TestKeys.profileBackButton,
-                        onPressed: () => context.pop(),
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go(AppRoutes.homeTab);
+                          }
+                        },
                         icon: const Icon(
                           CupertinoIcons.back,
                           color: Colors.white,

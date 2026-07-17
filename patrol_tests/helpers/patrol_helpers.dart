@@ -18,10 +18,10 @@ Future<void> pumpSynapseApp(PatrolIntegrationTester $) async {
 }
 
 Future<void> waitForDiscoverHome(PatrolIntegrationTester $) async {
-  await $(TestKeys.discoverScreen).waitUntilVisible(
+  await $(TestKeys.homeScreen).waitUntilVisible(
     timeout: const Duration(seconds: 20),
   );
-  expect($('Keywords'), findsOneWidget);
+  expect($('SYNAPSE'), findsWidgets);
 }
 
 Future<void> openProfileFromDiscover(PatrolIntegrationTester $) async {
@@ -34,10 +34,10 @@ Future<void> navigateBackFromProfile(PatrolIntegrationTester $) async {
   await $.pumpAndSettle(timeout: const Duration(seconds: 10));
 }
 
-/// Signed-in avatar lives in the collapsed discover header (top-right).
+/// Signed-in avatar lives in the collapsed home header (top-right).
 Future<void> waitForDiscoverSignedInAvatar(PatrolIntegrationTester $) async {
   final scrollable = find.descendant(
-    of: find.byKey(TestKeys.discoverScreen),
+    of: find.byKey(TestKeys.homeScreen),
     matching: find.byType(Scrollable),
   );
 

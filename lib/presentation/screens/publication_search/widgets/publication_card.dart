@@ -9,11 +9,13 @@ import 'package:synapse/domain/entities/publication_entity.dart';
 class PublicationCard extends StatelessWidget {
   final PublicationEntity publication;
   final bool isLastItem;
+  final bool showCitationCount;
 
   const PublicationCard({
     super.key,
     required this.publication,
     this.isLastItem = false,
+    this.showCitationCount = true,
   });
 
   @override
@@ -103,24 +105,25 @@ class PublicationCard extends StatelessWidget {
                 '${publication.journalName} ($displayDate)',
                 style: AppTextStyles.metadata,
               ),
-              const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  const Icon(
-                    CupertinoIcons.doc_text,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${publication.citationCount} Citations',
-                    style: AppTextStyles.metadata.copyWith(
+              if (showCitationCount) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.doc_text,
+                      size: 16,
                       color: AppColors.textSecondary,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${publication.citationCount} Citations',
+                      style: AppTextStyles.metadata.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

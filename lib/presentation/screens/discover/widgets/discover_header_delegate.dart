@@ -12,6 +12,9 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String? profileDisplayName;
   final String? profileEmail;
 
+  /// 0 = expanded, 1 = forced compact (e.g. search field focused).
+  final double focusProgress;
+
   DiscoverHeaderDelegate({
     required this.topPadding,
     this.onProfileTap,
@@ -19,13 +22,19 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
     this.profilePhotoUrl,
     this.profileDisplayName,
     this.profileEmail,
+    this.focusProgress = 0.0,
   });
 
-  @override
-  double get maxExtent => topPadding + 220.0;
+  double get _expandedExtent => topPadding + 220.0;
+  double get _collapsedExtent => topPadding + 60.0;
 
   @override
-  double get minExtent => topPadding + 60.0;
+  double get maxExtent =>
+      _expandedExtent -
+      ((_expandedExtent - _collapsedExtent) * focusProgress.clamp(0.0, 1.0));
+
+  @override
+  double get minExtent => _collapsedExtent;
 
   @override
   bool shouldRebuild(covariant DiscoverHeaderDelegate oldDelegate) {
@@ -34,7 +43,8 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
         oldDelegate.isSignedIn != isSignedIn ||
         oldDelegate.profilePhotoUrl != profilePhotoUrl ||
         oldDelegate.profileDisplayName != profileDisplayName ||
-        oldDelegate.profileEmail != profileEmail;
+        oldDelegate.profileEmail != profileEmail ||
+        oldDelegate.focusProgress != focusProgress;
   }
 
   @override
@@ -44,7 +54,10 @@ class DiscoverHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final double extentDiff = maxExtent - minExtent;
-    final double progress = (shrinkOffset / extentDiff).clamp(0.0, 1.0);
+    final double scrollProgress =
+        extentDiff > 0 ? (shrinkOffset / extentDiff).clamp(0.0, 1.0) : 1.0;
+    final double progress =
+        (scrollProgress + focusProgress).clamp(0.0, 1.0);
 
     final double fadeOpacity = (1.0 - (progress * 2.5)).clamp(0.0, 1.0);
     final double collapsedOpacity = (1.0 - fadeOpacity).clamp(0.0, 1.0);

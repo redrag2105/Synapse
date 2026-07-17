@@ -11,6 +11,7 @@ class TrendLineChart extends StatelessWidget {
   final double maxY;
   final String title;
   final String? subtitle;
+  final bool animate;
 
   const TrendLineChart({
     super.key,
@@ -20,6 +21,7 @@ class TrendLineChart extends StatelessWidget {
     required this.maxY,
     this.title = 'Publication Trend over Time',
     this.subtitle,
+    this.animate = true,
   });
 
   @override
@@ -42,19 +44,22 @@ class TrendLineChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 12.0, bottom: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.only(left: 12.0, bottom: 20.0, right: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(
-                  title,
-                  style: AppTextStyles.h3.copyWith(
-                    fontSize: 15,
-                    color: AppColors.brandBlue900,
+                Flexible(
+                  child: Text(
+                    title,
+                    style: AppTextStyles.h3.copyWith(
+                      fontSize: 15,
+                      color: AppColors.brandBlue900,
+                    ),
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(width: 8),
                   Text(
                     subtitle!,
                     style: AppTextStyles.metadata.copyWith(fontSize: 12),
@@ -67,7 +72,9 @@ class TrendLineChart extends StatelessWidget {
             height: 250,
             child: LineChart(
               _buildChartData(),
-              duration: const Duration(milliseconds: 800),
+              duration: animate
+                  ? const Duration(milliseconds: 800)
+                  : Duration.zero,
               curve: Curves.easeInOutCubic,
             ),
           ),

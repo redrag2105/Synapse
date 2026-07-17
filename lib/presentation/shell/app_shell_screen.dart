@@ -23,25 +23,13 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
   late final Animation<double> _modeAnimation;
 
   /// Branch order matches [navigationShell] indices:
-  /// 0 Home | 1 Trend | 2 Search (FAB) | 3 Authors | 4 Journals
+  /// 0 Keywords | 1 Authors | 2 Home (FAB) | 3 Journals | 4 Profile
   static const List<AppBottomNavItem> tabs = [
     AppBottomNavItem(
-      icon: CupertinoIcons.house,
-      activeIcon: CupertinoIcons.house_fill,
-      label: 'Home',
-      testKey: TestKeys.bottomNavHome,
-    ),
-    AppBottomNavItem(
-      icon: CupertinoIcons.chart_bar,
-      activeIcon: CupertinoIcons.chart_bar_fill,
-      label: 'Trend',
-    ),
-    AppBottomNavItem(
-      icon: CupertinoIcons.search,
-      activeIcon: CupertinoIcons.search,
-      label: 'Search',
-      isCenterFab: true,
-      testKey: TestKeys.bottomNavSearch,
+      icon: CupertinoIcons.tag,
+      activeIcon: CupertinoIcons.tag_fill,
+      label: 'Keywords',
+      testKey: TestKeys.bottomNavKeywords,
     ),
     AppBottomNavItem(
       icon: CupertinoIcons.person_2,
@@ -49,10 +37,23 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
       label: 'Authors',
     ),
     AppBottomNavItem(
+      icon: CupertinoIcons.house,
+      activeIcon: CupertinoIcons.house_fill,
+      label: 'Home',
+      isCenterFab: true,
+      testKey: TestKeys.bottomNavHome,
+    ),
+    AppBottomNavItem(
       icon: CupertinoIcons.book,
       activeIcon: CupertinoIcons.book_fill,
       label: 'Journals',
       testKey: TestKeys.bottomNavJournals,
+    ),
+    AppBottomNavItem(
+      icon: CupertinoIcons.person,
+      activeIcon: CupertinoIcons.person_fill,
+      label: 'Profile',
+      testKey: TestKeys.bottomNavProfile,
     ),
   ];
 
@@ -62,7 +63,6 @@ class _AppShellScreenState extends ConsumerState<AppShellScreen>
       return false;
     }
 
-    // Ignore nested scrollables (e.g. autocomplete lists, inner lists).
     if (notification.depth != 0) return false;
 
     updateTabBarStickyFromScroll(ref, notification.metrics);

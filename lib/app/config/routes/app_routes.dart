@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/presentation/screens/author_detail/author_detail_screen.dart';
-import 'package:synapse/presentation/screens/discover/discover_screen.dart';
+import 'package:synapse/presentation/screens/home/home_screen.dart';
 import 'package:synapse/presentation/screens/journal_detail/journal_detail_screen.dart';
+import 'package:synapse/presentation/screens/keywords/keywords_screen.dart';
 import 'package:synapse/presentation/screens/leading_journals/leading_journals_screen.dart';
 import 'package:synapse/presentation/screens/profile/profile_screen.dart';
 import 'package:synapse/presentation/screens/publication_detail/publication_detail_screen.dart';
-import 'package:synapse/presentation/screens/publication_search/publication_search_screen.dart';
 import 'package:synapse/presentation/screens/research_dashboard/research_dashboard_screen.dart';
 import 'package:synapse/presentation/screens/trend/trend_screen.dart';
 import 'package:synapse/presentation/screens/top_authors/top_authors_screen.dart';
@@ -15,14 +15,18 @@ import 'package:synapse/presentation/shell/app_shell_screen.dart';
 
 class AppRoutes {
   static const String home = '/';
-  static const String discover = '/discover';
-  static const String search = '/search';
+  static const String homeTab = '/home';
+  static const String keywords = '/keywords';
   static const String publicationDetail = '/detail';
   static const String trend = '/trend';
   static const String dashboard = '/dashboard';
   static const String authors = '/authors';
   static const String journals = '/journals';
   static const String profile = '/profile';
+
+  // Legacy path aliases kept for deep links / redirects.
+  static const String discover = '/discover';
+  static const String search = '/search';
 
   static String journalDetail(String journalId) =>
       '$journals/${Uri.encodeComponent(journalId)}';
@@ -37,20 +41,23 @@ class AppRoutes {
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-final _discoverNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'discover');
-final _searchNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'search');
-final _trendNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'trend');
+final _keywordsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'keywords');
+final _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
 final _authorsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'authors');
 final _journalsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'journals');
+final _profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: AppRoutes.discover,
+    initialLocation: AppRoutes.homeTab,
     debugLogDiagnostics: true,
     redirect: (context, state) {
       final path = state.uri.path;
-      if (path == AppRoutes.home) return AppRoutes.discover;
+      if (path == AppRoutes.home || path == AppRoutes.search) {
+        return AppRoutes.homeTab;
+      }
+      if (path == AppRoutes.discover) return AppRoutes.keywords;
       return null;
     },
     routes: [
@@ -60,29 +67,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
         branches: [
           StatefulShellBranch(
-            navigatorKey: _discoverNavigatorKey,
+            navigatorKey: _keywordsNavigatorKey,
             routes: [
               GoRoute(
-                path: AppRoutes.discover,
-                builder: (context, state) => const DiscoverScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            navigatorKey: _trendNavigatorKey,
-            routes: [
-              GoRoute(
-                path: AppRoutes.trend,
-                builder: (context, state) => const TrendScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            navigatorKey: _searchNavigatorKey,
-            routes: [
-              GoRoute(
-                path: AppRoutes.search,
-                builder: (context, state) => const PublicationSearchScreen(),
+                path: AppRoutes.keywords,
+                builder: (context, state) => const KeywordsScreen(),
               ),
             ],
           ),
@@ -110,6 +99,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: _homeNavigatorKey,
+            routes: [
+              GoRoute(
+                path: AppRoutes.homeTab,
+                builder: (context, state) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
             navigatorKey: _journalsNavigatorKey,
             routes: [
               GoRoute(
@@ -125,6 +123,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     },
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _profileNavigatorKey,
+            routes: [
+              GoRoute(
+                path: AppRoutes.profile,
+                builder: (context, state) => const ProfileScreen(),
               ),
             ],
           ),
@@ -147,9 +154,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: AppRoutes.profile,
+        path: AppRoutes.trend,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ProfileScreen(),
+        builder: (context, state) {
+          final keyword = state.uri.queryParameters['keyword'];
+          return TrendScreen(topicName: keyword);
+        },
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

@@ -19,6 +19,9 @@ class UniversalSearchBar extends ConsumerStatefulWidget {
   final VoidCallback? onCleared;
   final Key? searchFieldKey;
 
+  /// Gap between the search field and the autocomplete options panel.
+  final double optionsTopGap;
+
   const UniversalSearchBar({
     super.key,
     this.initialValue = '',
@@ -30,6 +33,7 @@ class UniversalSearchBar extends ConsumerStatefulWidget {
     this.onTopicSelected,
     this.onCleared,
     this.searchFieldKey,
+    this.optionsTopGap = 8.0,
   });
 
   @override
@@ -207,7 +211,7 @@ class _UniversalSearchBarState extends ConsumerState<UniversalSearchBar> {
         return Align(
           alignment: Alignment.topLeft,
           child: Padding(
-            padding: const EdgeInsets.only(top: 8.0, bottom: 24.0),
+            padding: EdgeInsets.only(top: widget.optionsTopGap, bottom: 24.0),
 
             child: ExcludeFocus(
               child: Material(

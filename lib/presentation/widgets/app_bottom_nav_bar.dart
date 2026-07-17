@@ -141,6 +141,8 @@ class AppBottomNavBar extends ConsumerWidget {
                             child: CenterFabOrb(
                               key: items[centerFabIndex].testKey,
                               focused: centerFabFocused,
+                              icon: items[centerFabIndex].icon,
+                              activeIcon: items[centerFabIndex].activeIcon,
                               onTap: () => onTap(centerFabIndex),
                             ),
                           ),

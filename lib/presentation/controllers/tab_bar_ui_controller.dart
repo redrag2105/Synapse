@@ -58,11 +58,11 @@ void updateTabBarSuppressed(WidgetRef ref, bool suppressed) {
 
 /// Shell branch indices — must match [StatefulShellRoute] branch order in [app_routes].
 abstract final class ShellTabIndex {
-  static const int home = 0;
-  static const int trend = 1;
-  static const int search = 2;
-  static const int authors = 3;
-  static const int journals = 4;
+  static const int keywords = 0;
+  static const int authors = 1;
+  static const int home = 2;
+  static const int journals = 3;
+  static const int profile = 4;
 }
 
 class ShellTabIndexNotifier extends Notifier<int> {

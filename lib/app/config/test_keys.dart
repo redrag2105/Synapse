@@ -6,6 +6,8 @@ class TestKeys {
   TestKeys._();
 
   static const discoverScreen = Key('discover_screen');
+  static const homeScreen = Key('home_screen');
+  static const keywordsScreen = Key('keywords_screen');
   static const discoverProfileButton = Key('discover_profile_button');
   static const discoverSignedInProfile = Key('discover_signed_in_profile');
 
@@ -16,7 +18,10 @@ class TestKeys {
   static const signedOutProfile = Key('signed_out_profile');
 
   static const bottomNavHome = Key('bottom_nav_home');
-  static const bottomNavSearch = Key('bottom_nav_search');
+  static const bottomNavKeywords = Key('bottom_nav_keywords');
+  static const bottomNavProfile = Key('bottom_nav_profile');
+  /// Legacy alias — Home replaced Search as the center FAB.
+  static const bottomNavSearch = bottomNavHome;
 
   static const publicationSearchField = Key('publication_search_field');
   static const publicationTopicAutocompleteFirst =

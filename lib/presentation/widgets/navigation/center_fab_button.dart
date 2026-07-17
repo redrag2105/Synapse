@@ -7,8 +7,16 @@ import 'package:synapse/presentation/widgets/navigation/app_bottom_nav_metrics.d
 class CenterFabOrb extends StatefulWidget {
   final bool focused;
   final VoidCallback onTap;
+  final IconData icon;
+  final IconData activeIcon;
 
-  const CenterFabOrb({super.key, required this.focused, required this.onTap});
+  const CenterFabOrb({
+    super.key,
+    required this.focused,
+    required this.onTap,
+    this.icon = Icons.home_rounded,
+    this.activeIcon = Icons.home_rounded,
+  });
 
   @override
   State<CenterFabOrb> createState() => _CenterFabOrbState();
@@ -160,9 +168,9 @@ class _CenterFabOrbState extends State<CenterFabOrb>
                   curve: Curves.easeOutBack,
                   builder: (context, rotation, child) {
                     return Transform.rotate(
-                      angle: rotation * (math.pi / 2),
+                      angle: rotation * math.pi * 2,
                       child: Icon(
-                        Icons.search_rounded,
+                        isFocused ? widget.activeIcon : widget.icon,
                         size: CenterFabButton.fabIconSize + (rotation * 2),
                         color: iconColor,
                         fontWeight: FontWeight.w800,

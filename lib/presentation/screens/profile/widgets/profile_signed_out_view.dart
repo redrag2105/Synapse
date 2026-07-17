@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/app/config/app_text_styles.dart';
+import 'package:synapse/app/config/routes/app_routes.dart';
 import 'package:synapse/app/config/test_keys.dart';
 import 'package:synapse/presentation/screens/profile/widgets/profile_section_widgets.dart';
 import 'package:synapse/presentation/widgets/google_sign_in_button.dart';
@@ -130,7 +131,13 @@ class _ProfileGateHeader extends StatelessWidget {
         children: [
           IconButton(
             key: TestKeys.profileBackButton,
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(AppRoutes.homeTab);
+              }
+            },
             icon: const Icon(CupertinoIcons.back, color: Colors.white),
           ),
           Padding(
