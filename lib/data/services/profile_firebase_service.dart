@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -8,14 +10,21 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:synapse/app/utils/app_logger.dart';
 
 class ProfileFirebaseService {
+  static const _deviceIdPreferenceKey = 'synapse_device_id';
+  static const _defaultTopic = 'all-users';
+
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void>? _permissionInFlight;
   bool _permissionResolved = false;
+  StreamSubscription<String>? _tokenRefreshSubscription;
+  String? _registeredUserId;
 
   Future<void> requestNotificationPermission() async {
     if (_permissionResolved) return;
@@ -39,15 +48,45 @@ class ProfileFirebaseService {
 
     try {
       final token = await _messaging.getToken();
-      AppLogger.i(
-        '================== FCM TOKEN =====================\n'
-        '${token ?? 'No token available'}\n'
-        '===================================================',
-      );
+      AppLogger.i(token == null ? 'FCM token is not available.' : 'FCM token is available.');
     } catch (e, stackTrace) {
       AppLogger.w('Could not get FCM token', e);
       AppLogger.d(stackTrace.toString());
     }
+  }
+
+  Future<void> registerDeviceForUser(User user) async {
+    if (kIsWeb) return;
+
+    await requestNotificationPermission();
+    final token = await _messaging.getToken();
+    if (token == null || token.isEmpty) {
+      AppLogger.w('Could not register device because FCM token is unavailable');
+      return;
+    }
+
+    await _saveDeviceToken(user: user, token: token, active: true);
+    await _subscribeDefaultTopic();
+    _listenForTokenRefresh(user);
+  }
+
+  Future<void> deactivateCurrentDevice(User user) async {
+    if (kIsWeb) return;
+
+    final deviceId = await _getOrCreateDeviceId();
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('devices')
+        .doc(deviceId)
+        .set({
+          'active': false,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'lastSeenAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+    await _tokenRefreshSubscription?.cancel();
+    _tokenRefreshSubscription = null;
+    _registeredUserId = null;
   }
 
   Future<void> _requestPermissionSafely() async {
@@ -56,6 +95,72 @@ class ProfileFirebaseService {
     } on FirebaseException {
       // Non-fatal if already in progress or dismissed.
     }
+  }
+
+  void _listenForTokenRefresh(User user) {
+    if (_registeredUserId == user.uid && _tokenRefreshSubscription != null) {
+      return;
+    }
+
+    _tokenRefreshSubscription?.cancel();
+    _registeredUserId = user.uid;
+    _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen(
+      (token) {
+        _saveDeviceToken(user: user, token: token, active: true);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        AppLogger.w('FCM token refresh listener failed', error);
+        AppLogger.d(stackTrace.toString());
+      },
+    );
+  }
+
+  Future<void> _saveDeviceToken({
+    required User user,
+    required String token,
+    required bool active,
+  }) async {
+    final deviceId = await _getOrCreateDeviceId();
+    final now = FieldValue.serverTimestamp();
+    final deviceRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('devices')
+        .doc(deviceId);
+    final snapshot = await deviceRef.get();
+    await deviceRef.set({
+      'token': token,
+      'platform': Platform.isAndroid
+          ? 'android'
+          : Platform.isIOS
+              ? 'ios'
+              : Platform.operatingSystem,
+      'appVersion': '1.0.0+1',
+      'active': active,
+      if (!snapshot.exists) 'createdAt': now,
+      'updatedAt': now,
+      'lastSeenAt': now,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _subscribeDefaultTopic() async {
+    try {
+      await _messaging.subscribeToTopic(_defaultTopic);
+    } catch (e, stackTrace) {
+      AppLogger.w('Could not subscribe to default FCM topic', e);
+      AppLogger.d(stackTrace.toString());
+    }
+  }
+
+  Future<String> _getOrCreateDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_deviceIdPreferenceKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+
+    final generated =
+        'device_${DateTime.now().microsecondsSinceEpoch}_${Platform.operatingSystem}';
+    await prefs.setString(_deviceIdPreferenceKey, generated);
+    return generated;
   }
 
   Future<String> exportDashboardReport({

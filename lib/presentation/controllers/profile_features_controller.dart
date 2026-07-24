@@ -52,10 +52,7 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
     _activeUser = user;
     final firebaseService = ref.read(profileFirebaseServiceProvider);
 
-    await firebaseService.logFcmToken();
-    if (!ref.mounted) return;
-
-    await firebaseService.requestNotificationPermission();
+    await firebaseService.registerDeviceForUser(user);
   }
 
   Future<void> refreshRemoteConfig() async {

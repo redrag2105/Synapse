@@ -50,3 +50,11 @@ patrol_test/test_bundle.dart
 
 #.env file for API keys and other secrets
 .env
+.env.*
+!.env.example
+service-account.json
+**/service-account.json
+admin-api/dist/
+admin-api/node_modules/
+admin-web/.next/
+admin-web/node_modules/

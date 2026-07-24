@@ -67,7 +67,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onSignOut: () async {
               final analytics = ref.read(analyticsServiceProvider);
               final auth = ref.read(authServiceProvider);
+              final profileService = ref.read(profileFirebaseServiceProvider);
               await analytics.logLogout();
+              await profileService.deactivateCurrentDevice(user);
               await auth.signOut();
             },
           );

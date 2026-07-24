@@ -29,6 +29,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
     function keywordHistoryKeys() {
       return ['keyword', 'normalizedKeyword', 'topicId', 'searchCount',
               'lastSearchedAt', 'firstSearchedAt'];
@@ -71,7 +75,30 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if false;
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+
+      match /devices/{deviceId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'token',
+            'platform',
+            'appVersion',
+            'active',
+            'createdAt',
+            'updatedAt',
+            'lastSeenAt'
+          ])
+          && request.resource.data.token is string
+          && request.resource.data.platform in ['android', 'ios']
+          && request.resource.data.appVersion is string
+          && request.resource.data.active is bool
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.lastSeenAt is timestamp;
+        allow delete: if false;
+      }
 
       match /keywordHistory/{keywordId} {
         allow read: if isOwner(userId);
@@ -79,6 +106,16 @@ service cloud.firestore {
         allow update: if isOwner(userId) && isValidKeywordHistoryUpdate();
         allow delete: if false;
       }
+    }
+
+    match /notificationCampaigns/{campaignId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /adminAuditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }
