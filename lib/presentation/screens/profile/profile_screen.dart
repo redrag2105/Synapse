@@ -5,6 +5,7 @@ import 'package:synapse/app/config/app_colors.dart';
 import 'package:synapse/presentation/controllers/analytics_providers.dart';
 import 'package:synapse/presentation/controllers/auth_providers.dart';
 import 'package:synapse/presentation/controllers/profile_features_controller.dart';
+import 'package:synapse/presentation/controllers/tab_bar_ui_controller.dart';
 import 'package:synapse/presentation/screens/profile/widgets/profile_signed_in_view.dart';
 import 'package:synapse/presentation/screens/profile/widgets/profile_signed_out_view.dart';
 
@@ -40,6 +41,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final user = next.asData?.value;
       final previousUser = previous?.asData?.value;
       if (user != null && previousUser?.uid != user.uid) {
+        ref.read(profileFeaturesControllerProvider.notifier).initialize(user);
+      }
+    });
+
+    // IndexedStack keeps Profile alive — re-log FCM whenever this tab is selected.
+    ref.listen<int>(shellTabIndexProvider, (previous, next) {
+      if (next != ShellTabIndex.profile || previous == next) return;
+      final user = ref.read(authStateProvider).asData?.value;
+      if (user != null) {
         ref.read(profileFeaturesControllerProvider.notifier).initialize(user);
       }
     });

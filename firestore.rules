@@ -1,23 +1,15 @@
 rules_version = '2';
 
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
+// Deploy: npx -y firebase-tools@latest deploy --only firestore:rules
+// Project: synapse-prm393
 //
-// Collection: users/{userId}/keywordHistory/{keywordDocId}
-// Fields:
-//   keyword: string (1..200)
-//   normalizedKeyword: string (1..200)
-//   topicId: string | absent (optional OpenAlex topic id)
-//   searchCount: int (>= 1)
-//   lastSearchedAt: timestamp
-//   firstSearchedAt: timestamp
-//
-// Client queries:
-//   orderBy('lastSearchedAt', descending) limit 8
-//   orderBy('searchCount', descending) limit 8
-//
-// ===============================================================
+// Mobile paths:
+//   users/{uid}/devices/{deviceId}       — FCM tokens (Profile open)
+//   users/{uid}/keywordHistory/{id}      — search history
+//   crashlyticsEvents/{id}               — Profile Crashlytics demo mirror
+// Admin paths (Admin SDK bypasses rules; client admin reads only):
+//   notificationCampaigns/{id}
+//   adminAuditLogs/{id}
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -33,77 +25,30 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
-    function keywordHistoryKeys() {
-      return ['keyword', 'normalizedKeyword', 'topicId', 'searchCount',
-              'lastSearchedAt', 'firstSearchedAt'];
-    }
-
-    function hasOnlyKeywordHistoryKeys() {
-      return request.resource.data.keys().hasOnly(keywordHistoryKeys());
-    }
-
-    function isValidKeywordHistoryCreate() {
-      let d = request.resource.data;
-      return hasOnlyKeywordHistoryKeys()
-        && d.keyword is string
-        && d.keyword.size() > 0
-        && d.keyword.size() <= 200
-        && d.normalizedKeyword is string
-        && d.normalizedKeyword.size() > 0
-        && d.normalizedKeyword.size() <= 200
-        && d.searchCount is int
-        && d.searchCount == 1
-        && d.lastSearchedAt is timestamp
-        && d.firstSearchedAt is timestamp
-        && (!('topicId' in d) || (d.topicId is string && d.topicId.size() <= 128));
-    }
-
-    function isValidKeywordHistoryUpdate() {
-      let d = request.resource.data;
-      let old = resource.data;
-      return hasOnlyKeywordHistoryKeys()
-        && d.keyword is string
-        && d.keyword.size() > 0
-        && d.keyword.size() <= 200
-        && d.normalizedKeyword is string
-        && d.normalizedKeyword.size() > 0
-        && d.searchCount is int
-        && d.searchCount == old.searchCount + 1
-        && d.lastSearchedAt is timestamp
-        && d.firstSearchedAt == old.firstSearchedAt
-        && (!('topicId' in d) || (d.topicId is string && d.topicId.size() <= 128));
-    }
-
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create, update: if isOwner(userId);
       allow delete: if false;
 
+      // Profile screen registers the device FCM token here.
       match /devices/{deviceId} {
         allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if isOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'token',
-            'platform',
-            'appVersion',
-            'active',
-            'createdAt',
-            'updatedAt',
-            'lastSeenAt'
-          ])
-          && request.resource.data.token is string
-          && request.resource.data.platform in ['android', 'ios']
-          && request.resource.data.appVersion is string
-          && request.resource.data.active is bool
-          && request.resource.data.updatedAt is timestamp
-          && request.resource.data.lastSeenAt is timestamp;
+        allow create, update: if isOwner(userId);
         allow delete: if false;
       }
 
       match /keywordHistory/{keywordId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidKeywordHistoryCreate();
-        allow update: if isOwner(userId) && isValidKeywordHistoryUpdate();
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keyword is string
+          && request.resource.data.keyword.size() > 0
+          && request.resource.data.keyword.size() <= 200
+          && request.resource.data.normalizedKeyword is string
+          && request.resource.data.searchCount is int
+          && request.resource.data.keys().hasOnly([
+               'keyword', 'normalizedKeyword', 'topicId', 'searchCount',
+               'lastSearchedAt', 'firstSearchedAt'
+             ]);
         allow delete: if false;
       }
     }
@@ -116,6 +61,39 @@ service cloud.firestore {
     match /adminAuditLogs/{logId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    // Mirrored from the Profile Crashlytics demo (and admin status updates via Admin SDK).
+    match /crashlyticsEvents/{eventId} {
+      allow create: if request.resource.data.keys().hasOnly([
+                       'title', 'exception', 'type', 'source', 'status',
+                       'platform', 'uid', 'email', 'createdAt', 'updatedAt'
+                     ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.exception is string
+        && request.resource.data.exception.size() > 0
+        && request.resource.data.exception.size() <= 1000
+        && request.resource.data.type in ['nonfatal', 'fatal']
+        && request.resource.data.source is string
+        && request.resource.data.source.size() > 0
+        && request.resource.data.source.size() <= 80
+        && request.resource.data.status == 'open'
+        && request.resource.data.platform in ['android', 'ios', 'web', 'other']
+        && (request.resource.data.uid == null
+            || (request.resource.data.uid is string
+                && request.resource.data.uid.size() <= 128))
+        && (request.resource.data.email == null
+            || (request.resource.data.email is string
+                && request.resource.data.email.size() <= 256))
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && (!isSignedIn()
+            || request.resource.data.uid == null
+            || request.resource.data.uid == request.auth.uid);
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
   }
 }

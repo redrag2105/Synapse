@@ -48,7 +48,11 @@ class ProfileFirebaseService {
 
     try {
       final token = await _messaging.getToken();
-      AppLogger.i(token == null ? 'FCM token is not available.' : 'FCM token is available.');
+      if (token == null || token.isEmpty) {
+        AppLogger.i('FCM token is not available.');
+      } else {
+        AppLogger.i('FCM token: $token');
+      }
     } catch (e, stackTrace) {
       AppLogger.w('Could not get FCM token', e);
       AppLogger.d(stackTrace.toString());
@@ -58,16 +62,22 @@ class ProfileFirebaseService {
   Future<void> registerDeviceForUser(User user) async {
     if (kIsWeb) return;
 
-    await requestNotificationPermission();
-    final token = await _messaging.getToken();
-    if (token == null || token.isEmpty) {
-      AppLogger.w('Could not register device because FCM token is unavailable');
-      return;
-    }
+    try {
+      await requestNotificationPermission();
+      final token = await _messaging.getToken();
+      if (token == null || token.isEmpty) {
+        AppLogger.w('Could not register device because FCM token is unavailable');
+        return;
+      }
 
-    await _saveDeviceToken(user: user, token: token, active: true);
-    await _subscribeDefaultTopic();
-    _listenForTokenRefresh(user);
+      await _saveDeviceToken(user: user, token: token, active: true);
+      await _subscribeDefaultTopic();
+      _listenForTokenRefresh(user);
+    } catch (e, stackTrace) {
+      // Profile must still open if Firestore rules/devices write fail.
+      AppLogger.w('Device registration failed', e);
+      AppLogger.d(stackTrace.toString());
+    }
   }
 
   Future<void> deactivateCurrentDevice(User user) async {
@@ -127,17 +137,21 @@ class ProfileFirebaseService {
         .doc(user.uid)
         .collection('devices')
         .doc(deviceId);
-    final snapshot = await deviceRef.get();
+
+    final platform = Platform.isAndroid
+        ? 'android'
+        : Platform.isIOS
+            ? 'ios'
+            : Platform.operatingSystem;
+
+    // Avoid a prior get() — it also requires read rules and can throw
+    // permission-denied before we even write. Merge keeps createdAt if present.
     await deviceRef.set({
       'token': token,
-      'platform': Platform.isAndroid
-          ? 'android'
-          : Platform.isIOS
-              ? 'ios'
-              : Platform.operatingSystem,
+      'platform': platform,
       'appVersion': '1.0.0+1',
       'active': active,
-      if (!snapshot.exists) 'createdAt': now,
+      'createdAt': now,
       'updatedAt': now,
       'lastSeenAt': now,
     }, SetOptions(merge: true));
@@ -397,14 +411,62 @@ class ProfileFirebaseService {
   }
 
   Future<void> recordHandledException() async {
+    final exception = Exception('Synapse handled exception demo');
+    const reason = 'Profile Crashlytics demo';
     await FirebaseCrashlytics.instance.recordError(
-      Exception('Synapse handled exception demo'),
+      exception,
       StackTrace.current,
-      reason: 'Profile Crashlytics demo',
+      reason: reason,
+    );
+    await _mirrorCrashlyticsEvent(
+      title: reason,
+      exceptionMessage: exception.toString(),
+      type: 'nonfatal',
+      source: 'profile_handled_exception',
     );
   }
 
-  void triggerTestCrash() {
+  Future<void> triggerTestCrash() async {
+    // Mirror first — crash() kills the process immediately after.
+    await _mirrorCrashlyticsEvent(
+      title: 'Profile Crashlytics test crash',
+      exceptionMessage: 'FirebaseCrashlytics.instance.crash()',
+      type: 'fatal',
+      source: 'profile_test_crash',
+    );
     FirebaseCrashlytics.instance.crash();
+  }
+
+  Future<void> _mirrorCrashlyticsEvent({
+    required String title,
+    required String exceptionMessage,
+    required String type,
+    required String source,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      await _firestore.collection('crashlyticsEvents').add({
+        'title': title,
+        'exception': exceptionMessage,
+        'type': type,
+        'source': source,
+        'status': 'open',
+        'platform': _crashlyticsPlatform(),
+        'uid': user?.uid,
+        'email': user?.email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (error, stackTrace) {
+      AppLogger.w('Could not mirror Crashlytics event to Firestore', error);
+      AppLogger.d(stackTrace.toString());
+    }
+  }
+
+  String _crashlyticsPlatform() {
+    if (kIsWeb) return 'web';
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isIOS) return 'ios';
+    return 'other';
   }
 }

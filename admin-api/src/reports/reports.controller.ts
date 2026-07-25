@@ -16,8 +16,8 @@ export class ReportsController {
   }
 
   @Get('download-url')
-  downloadUrl(@Query('path') path: string) {
-    return this.reports.signedUrl(path);
+  downloadUrl(@Query('path') path: string, @Query('inline') inline?: string) {
+    return this.reports.signedUrl(path, inline === '1' || inline === 'true');
   }
 
   @Delete()

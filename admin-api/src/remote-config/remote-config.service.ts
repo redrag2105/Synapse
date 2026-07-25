@@ -18,7 +18,7 @@ export class RemoteConfigService {
       parameters: template.parameters,
       parameterGroups: template.parameterGroups,
       conditions: template.conditions,
-      version: template.version,
+      version: this.serializeVersion(template.version),
       requiredLabKeys: ['max_journals_display', 'max_keywords_display']
     };
   }
@@ -49,16 +49,21 @@ export class RemoteConfigService {
     await this.audit.write(adminUser, {
       action: 'publish_remote_config',
       targetType: 'remoteConfig',
-      before: { etag: current.etag, version: current.version },
-      after: { etag: published.etag, version: published.version },
+      before: { etag: current.etag, version: this.serializeVersion(current.version) },
+      after: { etag: published.etag, version: this.serializeVersion(published.version) },
       success: true
     });
-    return { etag: published.etag, version: published.version };
+    return {
+      etag: published.etag,
+      version: this.serializeVersion(published.version)
+    };
   }
 
   async versions() {
     const versions = await this.firebase.remoteConfig.listVersions({ pageSize: 20 });
-    return { items: versions.versions };
+    return {
+      items: (versions.versions ?? []).map((version) => this.serializeVersion(version))
+    };
   }
 
   async rollback(versionNumber: string, adminUser: AdminUser) {
@@ -67,10 +72,13 @@ export class RemoteConfigService {
       action: 'rollback_remote_config',
       targetType: 'remoteConfig',
       targetId: versionNumber,
-      after: { etag: result.etag, version: result.version },
+      after: { etag: result.etag, version: this.serializeVersion(result.version) },
       success: true
     });
-    return { etag: result.etag, version: result.version };
+    return {
+      etag: result.etag,
+      version: this.serializeVersion(result.version)
+    };
   }
 
   private normalizeParameters(parameters: Record<string, unknown>) {
@@ -80,5 +88,30 @@ export class RemoteConfigService {
         return [key, { defaultValue: { value: String(value) } }];
       })
     );
+  }
+
+  /** Remote Config VersionImpl is not Firestore-serializable — convert to plain data. */
+  private serializeVersion(version: unknown) {
+    if (version == null) return null;
+    const record = version as Record<string, unknown>;
+    const updateUser = record.updateUser as Record<string, unknown> | undefined;
+    return {
+      versionNumber:
+        record.versionNumber != null ? String(record.versionNumber) : null,
+      updateTime: record.updateTime != null ? String(record.updateTime) : null,
+      updateOrigin: record.updateOrigin != null ? String(record.updateOrigin) : null,
+      updateType: record.updateType != null ? String(record.updateType) : null,
+      description: record.description != null ? String(record.description) : null,
+      rollbackSource:
+        record.rollbackSource != null ? String(record.rollbackSource) : null,
+      isLegacy: typeof record.isLegacy === 'boolean' ? record.isLegacy : null,
+      updateUser: updateUser
+        ? {
+            email: updateUser.email != null ? String(updateUser.email) : null,
+            imageUrl:
+              updateUser.imageUrl != null ? String(updateUser.imageUrl) : null
+          }
+        : null
+    };
   }
 }

@@ -25,7 +25,7 @@ export function FirebaseServicesCard({
     },
     {
       name: 'Crashlytics',
-      description: crashlytics.configured ? 'Crashlytics data source is configured.' : crashlytics.integrationStatus ?? 'Not configured',
+      description: crashlytics.configured ? 'Crashlytics events mirrored from the mobile app.' : crashlytics.integrationStatus ?? 'Not configured',
       status: crashlytics.configured ? 'Connected' : 'Not configured',
       route: '/admin/crashlytics',
       icon: Bug

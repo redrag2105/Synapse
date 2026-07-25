@@ -32,6 +32,11 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
   }
 
   Future<void> initialize(User user) async {
+    final firebaseService = ref.read(profileFirebaseServiceProvider);
+
+    // Always log FCM token when Profile opens (useful for admin "send test").
+    unawaited(firebaseService.logFcmToken());
+
     if (_activeUser?.uid == user.uid) return;
 
     if (_initializeFuture != null) {
@@ -138,7 +143,7 @@ class ProfileFeaturesController extends Notifier<ProfileFeaturesState> {
     await profileService.recordHandledException();
   }
 
-  void triggerTestCrash() {
-    ref.read(profileFirebaseServiceProvider).triggerTestCrash();
+  Future<void> triggerTestCrash() async {
+    await ref.read(profileFirebaseServiceProvider).triggerTestCrash();
   }
 }

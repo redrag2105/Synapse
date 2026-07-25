@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AdminUser } from '../common/types/admin-user';
 import { CrashlyticsService } from './crashlytics.service';
 
 @ApiTags('crashlytics')
@@ -9,8 +11,8 @@ export class CrashlyticsController {
   constructor(private readonly crashlytics: CrashlyticsService) {}
 
   @Get('issues')
-  issues() {
-    return this.crashlytics.issues();
+  issues(@Query('limit') limit = '50') {
+    return this.crashlytics.issues(Number(limit) || 50);
   }
 
   @Get('issues/:issueId')
@@ -19,7 +21,11 @@ export class CrashlyticsController {
   }
 
   @Patch('issues/:issueId/status')
-  updateStatus(@Param('issueId') issueId: string, @Body('status') status: string) {
-    return this.crashlytics.updateStatus(issueId, status);
+  updateStatus(
+    @Param('issueId') issueId: string,
+    @Body('status') status: string,
+    @CurrentUser() user: AdminUser
+  ) {
+    return this.crashlytics.updateStatus(issueId, status, user);
   }
 }

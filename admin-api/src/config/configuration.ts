@@ -15,6 +15,8 @@ export default () => ({
       process.env.FIREBASE_NOTIFICATION_COLLECTION ?? 'notificationCampaigns',
     auditLogCollection:
       process.env.FIREBASE_AUDIT_LOG_COLLECTION ?? 'adminAuditLogs',
+    crashlyticsEventsCollection:
+      process.env.FIREBASE_CRASHLYTICS_EVENTS_COLLECTION ?? 'crashlyticsEvents',
     reportsPrefix: process.env.FIREBASE_REPORTS_PREFIX ?? 'reports',
     defaultTopic: process.env.FCM_DEFAULT_TOPIC ?? 'all-users'
   },

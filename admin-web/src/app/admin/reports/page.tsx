@@ -1,8 +1,8 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, ChevronsLeft, Copy, Download, FileText, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, Copy, Download, Eye, FileText, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient, apiGet } from '@/lib/api/client';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { PdfPreviewDialog } from '@/components/ui/pdf-preview-dialog';
 import { EmptyPanel, ErrorPanel, PageSkeleton } from '@/components/states/page-states';
 
 type Report = {
@@ -26,6 +27,13 @@ type ReportsResponse = {
   pageToken: string | null;
 };
 
+type PdfPreviewState = {
+  report: Report;
+  url: string | null;
+  loading: boolean;
+  error: string | null;
+};
+
 const pageSizeOptions = [10, 25, 50, 100];
 
 export default function ReportsPage() {
@@ -36,6 +44,7 @@ export default function ReportsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageTokens, setPageTokens] = useState<(string | null)[]>([null]);
+  const [preview, setPreview] = useState<PdfPreviewState | null>(null);
   const client = useQueryClient();
   const currentPageToken = pageTokens[pageIndex] ?? null;
 
@@ -106,6 +115,27 @@ export default function ReportsPage() {
     if (open) window.open(data.url, '_blank', 'noopener,noreferrer');
   }
 
+  const loadPreviewUrl = useCallback(async (report: Report) => {
+    setPreview({ report, url: null, loading: true, error: null });
+    try {
+      const data = await apiGet<{ url: string }>(
+        `/admin/reports/download-url?path=${encodeURIComponent(report.fullPath)}&inline=1`
+      );
+      setPreview({ report, url: data.url, loading: false, error: null });
+    } catch {
+      setPreview({
+        report,
+        url: null,
+        loading: false,
+        error: 'Could not load a signed URL for this PDF.'
+      });
+    }
+  }, []);
+
+  function closePreview() {
+    setPreview(null);
+  }
+
   if (query.isLoading && !query.data) return <PageSkeleton />;
   if (query.isError) return <ErrorPanel message="Could not load Firebase Storage reports." onRetry={() => void query.refetch()} />;
 
@@ -137,7 +167,7 @@ export default function ReportsPage() {
                 <CardTitle>PDF reports</CardTitle>
                 {activeFilterCount ? <Badge variant="muted">{activeFilterCount} filters</Badge> : null}
               </div>
-              <CardDescription className="mt-2">Signed URLs are generated on demand and are not displayed in the table.</CardDescription>
+              <CardDescription className="mt-2">Click a report name to preview the PDF. Signed URLs are generated on demand.</CardDescription>
             </div>
             <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
               <span>Rows per page</span>
@@ -186,12 +216,17 @@ export default function ReportsPage() {
                   {reports.map((report) => (
                     <tr key={report.fullPath} className="border-b last:border-0 hover:bg-[var(--muted)]/45">
                       <td className="p-3">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--muted)]">
+                        <button
+                          type="button"
+                          className="flex max-w-full items-center gap-3 rounded-lg text-left transition-colors hover:text-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                          onClick={() => void loadPreviewUrl(report)}
+                          aria-label={`Preview ${report.name}`}
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--muted)]">
                             <FileText className="h-4 w-4 text-[var(--primary)]" />
                           </span>
-                          <span className="max-w-[260px] truncate font-medium">{report.name}</span>
-                        </div>
+                          <span className="max-w-[260px] truncate font-medium underline-offset-2 hover:underline">{report.name}</span>
+                        </button>
                       </td>
                       <td className="p-3"><Badge variant="muted">{report.ownerUid ?? 'unknown'}</Badge></td>
                       <td className="max-w-sm truncate p-3 text-[var(--muted-foreground)]" title={report.fullPath}>{report.fullPath}</td>
@@ -199,6 +234,7 @@ export default function ReportsPage() {
                       <td className="p-3">{report.created ? new Date(report.created).toLocaleString() : '-'}</td>
                       <td className="p-3">
                         <div className="flex justify-end gap-2">
+                          <Button size="icon" variant="outline" aria-label={`Preview ${report.name}`} onClick={() => void loadPreviewUrl(report)}><Eye className="h-4 w-4" /></Button>
                           <Button size="icon" variant="outline" aria-label={`Download ${report.name}`} onClick={() => copyUrl(report.fullPath, true)}><Download className="h-4 w-4" /></Button>
                           <Button size="icon" variant="outline" aria-label={`Copy signed URL for ${report.name}`} onClick={() => copyUrl(report.fullPath)}><Copy className="h-4 w-4" /></Button>
                           <Button size="icon" variant="destructive" aria-label={`Delete ${report.name}`} onClick={() => confirm('Delete this report?') && deleteMutation.mutate(report.fullPath)}><Trash2 className="h-4 w-4" /></Button>
@@ -234,6 +270,16 @@ export default function ReportsPage() {
           </div>
         </div>
       </Card>
+
+      <PdfPreviewDialog
+        open={Boolean(preview)}
+        title={preview?.report.name ?? 'PDF'}
+        url={preview?.url ?? null}
+        loading={preview?.loading ?? false}
+        error={preview?.error ?? null}
+        onClose={closePreview}
+        onRetry={preview ? () => void loadPreviewUrl(preview.report) : undefined}
+      />
     </div>
   );
 }

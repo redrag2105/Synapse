@@ -18,7 +18,7 @@ export function AnalyticsDateFilter({
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Select value="last-7-days" aria-label="Analytics date range" className="w-[150px]">
+        <Select defaultValue="last-7-days" aria-label="Analytics date range" className="w-[150px]">
           <option value="last-7-days">{rangeLabel}</option>
           <option value="last-30-days" disabled>Last 30 days</option>
           <option value="last-90-days" disabled>Last 90 days</option>

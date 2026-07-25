@@ -39,7 +39,7 @@ export class DashboardService {
       },
       reports: reportSummary,
       analytics: await this.analytics.overview(),
-      crashlytics: this.crashlytics.issues()
+      crashlytics: await this.crashlytics.issues()
     };
   }
 

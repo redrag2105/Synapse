@@ -35,14 +35,20 @@ export class ReportsService {
     return { items, pageToken: nextQuery?.pageToken ?? null };
   }
 
-  async signedUrl(path: string) {
+  async signedUrl(path: string, inline = false) {
     this.assertReportPath(path);
     const file = this.firebase.storage.bucket().file(path);
     const [exists] = await file.exists();
     if (!exists) throw new NotFoundException('Report not found');
     const [url] = await file.getSignedUrl({
       action: 'read',
-      expires: Date.now() + 15 * 60 * 1000
+      expires: Date.now() + 15 * 60 * 1000,
+      ...(inline
+        ? {
+            responseDisposition: 'inline',
+            responseType: 'application/pdf'
+          }
+        : {})
     });
     return { url, expiresInSeconds: 900 };
   }
